@@ -25,16 +25,20 @@ class Book {
 }
 
 
-
 if (!process.env.ACCESSURL) {
   console.log('env var: ACCESSURL required')
   process.exit(1);
 }
 
 
+if (!process.env.EXPORT_PATH) {
+  console.log('env var: EXPORT_PATH required')
+  process.exit(1);
+}
+
 (async () => {
   // const page = await BrowserPage.getInstance();
-  const browser = await puppeteer.launch({ headless: false });
+  const browser = await puppeteer.launch({ headless: true }); // true:not show browser
   const page = await browser.newPage();
 
   // 检查是否存在 cookie 文件
@@ -47,10 +51,11 @@ if (!process.env.ACCESSURL) {
 
   // 如果存在 cookie，则直接加载
   if (cookies.length > 0) {
+    console.log("Login use cookies...")
     await page.setCookie(...cookies);
     await page.goto('https://www.yuque.com/dashboard');
   } else {
-    // 否则，使用账号密码登录
+    console.log("Login use user + password...")
     if (!process.env.USER) {
       console.log('no cookie so use env var: USER required')
       process.exit(1);
@@ -81,7 +86,11 @@ if (!process.env.ACCESSURL) {
     // 保存 cookie 到本地文件
     cookies = await page.cookies();
     fs.writeFileSync(cookieFile, JSON.stringify(cookies));
+    
+    console.log("Save cookie to cookies.json")
   }
+  console.log("Login successfully!")
+  console.log()
 
   
   // await page.goto('https://www.yuque.com/dashboard/books');
@@ -99,10 +108,10 @@ if (!process.env.ACCESSURL) {
   // }
 
 
+  console.log("Get book stacks ...")
   var books = [];
   const response = await page.goto('https://www.yuque.com/api/mine/book_stacks', { waitUntil: 'networkidle0' });
   const bookListData = await response.text();
-  // console.log(response.text());
   
   const stream = new Readable({
     read() {
@@ -110,8 +119,8 @@ if (!process.env.ACCESSURL) {
       this.push(null); // stream end
     }
   });
-  const parser = JSONStream.parse('data.*'); // 使用JSONStream模块解析JSON
-  stream.pipe(parser); // 将读取流通过管道传递给解析器
+  const parser = JSONStream.parse('data.*');
+  stream.pipe(parser);
   parser.on('data', function(object) {
     for ( let i = 0; i < object.books.length; i++ ) {
       books.push(new Book(object.books[i].id, object.books[i].name, object.books[i].slug))
@@ -121,10 +130,10 @@ if (!process.env.ACCESSURL) {
 
   await new Promise(resolve => {
     parser.on('end', async () => {
+      console.log(`Books count is: ${books.length}`)
       var bookPages = [];
       for ( let i = 0; i < books.length; i++ ) {
         bookPages[i] = [];
-        // console.log("init index = " + i)
         var bookUrl = 'https://www.yuque.com/api/docs?book_id=' + books[i].id
         var bookResponse = await page.goto(bookUrl, { waitUntil: 'networkidle0' });
         var pageListData = await bookResponse.text();
@@ -137,14 +146,13 @@ if (!process.env.ACCESSURL) {
         var bookParser = JSONStream.parse('data.*');
         bookStream.pipe(bookParser);
         bookParser.on('data', (object) => {
-          // console.log("deal index = " + i)
           bookPages[i].push(new BookPage(object.id, object.title, object.slug))
         });
 
         bookParser.on('end', () => {
-          // console.log("end index = " + i)
-          // console.log(bookPages[i])
-          // console.log()
+          console.log(`No.${i+1} Book's name: ${books[i].name}`)
+          console.log(bookPages[i])
+          console.log()
           books[i].pages = bookPages[i]
           books[i].pageLength = bookPages[i].length
           
@@ -155,7 +163,11 @@ if (!process.env.ACCESSURL) {
       }
     });
   }).then(async () => {
-    const folderPath = 'E:\\test\\yuque-test\\';
+    console.log()
+    console.log("Start export all books ...")
+    console.log()
+
+    const folderPath = process.env.EXPORT_PATH;
     console.log("download folderPath: " + folderPath)
     if (!fs.existsSync(folderPath)) {
       console.error(`export path:${folderPath} is not exist`)
@@ -169,9 +181,8 @@ if (!process.env.ACCESSURL) {
     })
 
     for ( let i = 0; i < books.length; i++ ) {
-      // console.log(books[i])
       for (let j = 0; j < books[i].pages.length; j++ ) {
-        console.log("download page " + books[i].name + "/" + books[i].pages[j].name)
+        console.log("Download document " + books[i].name + "/" + books[i].pages[j].name)
         await downloadMardown(page, folderPath, books[i].name, books[i].pages[j].name, process.env.ACCESSURL + "/" + books[i].slug + "/" + books[i].pages[j].slug)
         console.log();
       }
@@ -194,10 +205,12 @@ if (!process.env.ACCESSURL) {
         });
       });
       
-      console.log(`clean useless files successfully`);
+    console.log()
+    console.log(`Clean useless files successfully`);
+    console.log()
+    console.log(`Export successfully! Have a good day!`);
+    console.log()
     });
-
-
   });
 
   browser.close()
@@ -221,7 +234,7 @@ async function downloadMardown(page, rootPath, book, mdname, docUrl) {
     }, link);
   }
 
-  console.log("download url: " + url)
+  console.log("Download URL: " + url)
   await goto(page, url);
 
   async function waitForDownload() {
@@ -244,8 +257,6 @@ async function downloadMardown(page, rootPath, book, mdname, docUrl) {
     var count = recount
     try {
       const filename = await waitForDownload();
-      console.log('Downloaded file:', filename);
-
       const oldFiles = path.join(rootPath, filename);
       var newFiles = path.join(newPath, mdname.replace(/\//g, '-') + '.md');
       while (fs.existsSync(newFiles)) {
@@ -253,7 +264,7 @@ async function downloadMardown(page, rootPath, book, mdname, docUrl) {
         newFiles = path.join(newPath, mdname.replace(/\//g, '-') + `(${count}).md`);
       }
 
-      console.log(`oldFiles:${oldFiles} and newFiles:${newFiles}`);
+      // console.log(`oldFiles:${oldFiles} and newFiles:${newFiles}`);
       fs.renameSync(oldFiles, newFiles);
       console.log('Moved file to:', newFiles);
     } catch (error) {
@@ -263,7 +274,7 @@ async function downloadMardown(page, rootPath, book, mdname, docUrl) {
         await goto(page, url);
         await downloadFile(count, retries + 1);
       } else {
-        console.log(`download error: ` + error);
+        console.log(`Download error: ` + error);
       }
     }
   }
