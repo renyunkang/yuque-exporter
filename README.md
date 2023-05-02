@@ -104,7 +104,7 @@ const browser = await puppeteer.launch({ headless: true });
  to
 const browser = await puppeteer.launch({ headless: true, executablePath: '/usr/bin/google-chrome' });
  or
-# headless: false 会打开浏览器实时观察模拟的操作，可用于调试；executablePath 替换为自己本机对应路径
+// headless: false 会打开浏览器实时观察模拟的操作，可用于调试；executablePath 替换为自己本机对应路径
 const browser = await puppeteer.launch({ headless: false, executablePath: "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe" });
 ```
 
