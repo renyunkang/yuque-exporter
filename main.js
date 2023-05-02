@@ -6,21 +6,6 @@ import { exit } from 'process';
 import path from 'path';
 
 
-// class BrowserPage {
-//   constructor(page) {
-//     this.page = page;
-//   }
-
-//   static getInstance() {
-//     if (!BrowserPage.instance) {
-//       const browser = puppeteer.launch({ headless: false });
-//       BrowserPage.instance = browser.newPage();
-//     }
-//     return BrowserPage.instance
-//   }
-// }
-
-
 class BookPage {
   constructor(id, name, slug) {
     this.id = id;
@@ -64,9 +49,8 @@ if (!process.env.ACCESSURL) {
   if (cookies.length > 0) {
     await page.setCookie(...cookies);
     await page.goto('https://www.yuque.com/dashboard');
-    // 等待页面跳转完成
-    // await page.waitForNavigation({waitUntil: 'networkidle0'});
   } else {
+    // 否则，使用账号密码登录
     if (!process.env.USER) {
       console.log('no cookie so use env var: USER required')
       process.exit(1);
@@ -77,9 +61,7 @@ if (!process.env.ACCESSURL) {
       process.exit(1);
     }
 
-    // 否则，使用账号密码登录
     await page.goto('https://www.yuque.com/login');
-
     // Switch to password login
     await page.click('.switch-btn');
 
@@ -103,7 +85,6 @@ if (!process.env.ACCESSURL) {
 
   
   // await page.goto('https://www.yuque.com/dashboard/books');
-  
   // // 获取所有知识库元素
   // await page.waitForSelector('div[data-type="Book"]', { waitUntil: 'networkidle0' });
   // const books = await page.$$eval('div[data-type="Book"] .book-name-text', elements => elements.map(element => element.textContent));
@@ -174,50 +155,65 @@ if (!process.env.ACCESSURL) {
       }
     });
   }).then(async () => {
-    for ( let i = 0; i < 2; i++ ) { //books.length
-      console.log("<==========>")
-      console.log(books[i])
+    const folderPath = 'E:\\test\\yuque-test\\';
+    console.log("download folderPath: " + folderPath)
+    if (!fs.existsSync(folderPath)) {
+      console.error(`export path:${folderPath} is not exist`)
+      process.exit(1)
+    }
+  
+    const client = await page.target().createCDPSession()
+    await client.send('Page.setDownloadBehavior', {
+      behavior: 'allow',
+      downloadPath: folderPath,
+    })
+
+    for ( let i = 0; i < books.length; i++ ) {
+      // console.log(books[i])
       for (let j = 0; j < books[i].pages.length; j++ ) {
         console.log("download page " + books[i].name + "/" + books[i].pages[j].name)
-        await downloadMardown(page, books[i].name, books[i].pages[j].name, process.env.ACCESSURL + "/" + books[i].slug + "/" + books[i].pages[j].slug)
+        await downloadMardown(page, folderPath, books[i].name, books[i].pages[j].name, process.env.ACCESSURL + "/" + books[i].slug + "/" + books[i].pages[j].slug)
         console.log();
       }
     }
+
+
+    fs.readdir(folderPath, (err, files) => {
+      if (err) throw err;
+
+      files.forEach((file) => {
+        const filePath = path.join(folderPath, file);
+        fs.stat(filePath, (err, stat) => {
+          if (err) throw err;
+
+          if (stat.isFile()) {    
+            fs.unlink(filePath, (err) => {
+              if (err) throw err;
+            });
+          }
+        });
+      });
+      
+      console.log(`clean useless files successfully`);
+    });
+
+
   });
-  
-  // then(() => {
-  //   for ( let i = 0; i < books.length; i++ ) {
-  //     console.log("<==========>")
-  //     console.log(books[i])
-  //     for (let j = 0; j < books[i].pages.length; j++ ) {
-  //       console.log("download page " + books[i].pages[j].name)
-  //       downloadMardown(page, books[i].name, "renyunkang/" + books[i].slug + "/" + books[i].pages[j].slug)
-  //     }
-  //   }
-  // });
 
-
+  browser.close()
 })();
 
 
 // browserpage, bookName, url
-async function downloadMardown(page, book, mdname, docUrl) {
+async function downloadMardown(page, rootPath, book, mdname, docUrl) {
   const url = 'https://www.yuque.com/' + docUrl + '/markdown?attachment=true&latexcode=false&anchor=false&linebreak=false';
-  const folderPath = 'E:\\test\\yuque-test\\' + book;
-  const timeout = 10000; // 30s timeout
+  const timeout = 10000; // 10s timeout
   const maxRetries = 3; // max retry count
-  
-  console.log("download url: " + url)
-  console.log("download folderPath: " + folderPath)
-  if (!fs.existsSync(folderPath)) {
-    fs.mkdirSync(folderPath);
-  }
 
-  const client = await page.target().createCDPSession()
-  await client.send('Page.setDownloadBehavior', {
-    behavior: 'allow',
-    downloadPath: folderPath,
-  })
+  const newPath = path.join(rootPath, book);
+  if (!fs.existsSync(newPath)) {
+    fs.mkdirSync(newPath)
+  }
 
   async function goto(page, link) {
     return page.evaluate((link) => {
@@ -225,12 +221,12 @@ async function downloadMardown(page, book, mdname, docUrl) {
     }, link);
   }
 
+  console.log("download url: " + url)
   await goto(page, url);
 
   async function waitForDownload() {
     return new Promise((resolve, reject) => {
-      const watcher = fs.watch(folderPath, (eventType, filename) => {
-        console.log(`watch event type:${eventType}`);
+      const watcher = fs.watch(rootPath, (eventType, filename) => {
         if (eventType === 'rename' && filename.endsWith('.md')) {
           watcher.close();
           resolve(filename);
@@ -250,62 +246,29 @@ async function downloadMardown(page, book, mdname, docUrl) {
       const filename = await waitForDownload();
       console.log('Downloaded file:', filename);
 
-      const oldPath = path.join(folderPath, filename);
-      var newPath = path.join(folderPath, mdname.replace(/\//g, '-') + '.md');
+      const oldFiles = path.join(rootPath, filename);
+      var newFiles = path.join(newPath, mdname.replace(/\//g, '-') + '.md');
+      while (fs.existsSync(newFiles)) {
+        count++;
+        newFiles = path.join(newPath, mdname.replace(/\//g, '-') + `(${count}).md`);
+      }
 
-      // while (fs.existsSync(newPath)) {
-      //   count++;
-      //   newPath = path.join(folderPath, mdname.replace(/\//g, '-') + `(${count}).md`);
-      // }
-
-      console.log(`oldPath:${oldPath} and newPath:${newPath}`);
-      // fs.renameSync(oldPath, newPath);
-      // console.log('Moved file to:', newPath);
+      console.log(`oldFiles:${oldFiles} and newFiles:${newFiles}`);
+      fs.renameSync(oldFiles, newFiles);
+      console.log('Moved file to:', newFiles);
     } catch (error) {
       console.log(error);
       if (error.message === 'Download timed out' && retries < maxRetries) {
         console.log(`Retrying download... (attempt ${retries + 1})`);
+        await goto(page, url);
         await downloadFile(count, retries + 1);
       } else {
         console.log(`download error: ` + error);
-        // return Promise.reject(error);
       }
     }
   }
 
   await downloadFile()
-
-  // await Promise.all([downloadFile(), new Promise((_, reject) => setTimeout(() => reject(new Error('Download timed out')), timeout))]);
 }
-// =======================
-//   try {
-//     const filename = await Promise.race([waitForDownload(), new Promise((_, reject) => setTimeout(() => reject(new Error('Download timed out')), timeout))]);
-//     console.log('Downloaded file:', filename);
-
-//     const oldPath = path.join(folderPath, filename);
-//     const newPath = path.join(folderPath, book + '.md');
-//     fs.renameSync(oldPath, newPath);
-//     console.log('Moved file to:', newPath);
-//   } catch (error) {
-//     console.error(error);
-//   }
-// }
-
-// ========================
-//     });
-//   }
-
-//   // 下载卡住 - 重试
-//   const filename = await waitForDownload();
-//   console.log('Downloaded file:', filename);
-
-//   const oldPath = path.join(folderPath, filename);
-//   const newPath = path.join(folderPath, mdname.replace(/\//g, '-') + '.md');
-//   console.log('Moved file to:', newPath, newPath);
-//   fs.renameSync(oldPath, newPath);
-// }
-
-
-
 
 
