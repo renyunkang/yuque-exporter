@@ -1,0 +1,9 @@
+{
+  "type": "module",
+  "dependencies": {
+    "axios": "^1.4.0",
+    "esm": "^3.2.25",
+    "jsonstream": "^1.0.3",
+    "puppeteer": "^19.11.1"
+  }
+}
