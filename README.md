@@ -97,11 +97,14 @@ $env:ACCESSURL="xxx";$env:USER="xxx";$env:PASSWORD="xxx";$env:EXPORT_PATH="/path
 -   Windows: C:\Program Files (x86)\Google\Chrome\Application\chrome.exe
 -   macOS: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
 -   Linux: /usr/bin/google-chrome
-如果主机上对应的可执行文件路径与默认一致但仍然运行失败，可以修改源码手动指定一下
+如果主机上对应的可执行文件路径与默认一致但仍然运行失败，可以修改源码手动指定一下，如果没有chorme也可以执行edge的二进制文件
 ![image.png](https://images.ryken.cloud/2023/05/eb093fe57cb0b6cc557a9616f5899445.png)
 ```js
 const browser = await puppeteer.launch({ headless: true });
  to
 const browser = await puppeteer.launch({ headless: true, executablePath: '/usr/bin/google-chrome' });
+ or
+# headless: false 会打开浏览器实时观察模拟的操作，可用于调试；executablePath 替换为自己本机对应路径
+const browser = await puppeteer.launch({ headless: false, executablePath: "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe" });
 ```
 
