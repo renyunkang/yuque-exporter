@@ -1,6 +1,20 @@
 
 # 语雀导出文档工具
+### 功能：
+
+- 模拟用户浏览器操作一篇一篇导出 markdown 文档
+- 支持同名的文档导出
+- 支持导出失败重试
+
+我的知识库与导出文件目录展示：
+![image.png](https://images.ryken.cloud/2023/05/91804cc3646d6356cd7458c9a12444fc.png)
+
+![image.png](https://images.ryken.cloud/2023/05/4b3a4e4207ead71f15600806c12a5c1d.png)
+
+动图展示：![image.png](./images/exporter.gif)
+
 ### 说明：
+
 这是一个基于puppeteer 来模拟用户在浏览器的操作一篇一篇的导出语雀文档的工具。
 关于语雀的导出可以详情说明见官方的文档：[如何导入导出知识库](https://www.yuque.com/yuque/thyzgp/import-lake-to-lark) 
 
@@ -64,14 +78,14 @@ set EXPORT_PATH=/path/to/exporter
 node main.js
 
 # powershell
-$env:ACCESSURL="xxx";$env:USER="xxx";$env:PASSWORD="xxx"; node .\main.js
+$env:ACCESSURL="xxx";$env:USER="xxx";$env:PASSWORD="xxx";$env:EXPORT_PATH="/path/to/exporter"; node .\main.js
 ```
 
 ### 存在的问题：
 1.无法获取知识库的目录信息，进一步做层级关系的文档导出存储
 现在普通用户无法获取知识库中的目录信息，因此知识库文档的导出后全部平铺保存到以知识库名称命名的文件夹中。同名的文档会在文档后面追加数字以区分，知识库目录的分级需要自己根据文档的内容进行调整。
 
-解决办法：访问目录的url为 https://www.yuque.com/r/renyunkang/kb/toc, 有兴趣的可以根据 html 的元素的特征来分析。（我个人没有这个需求也就没有太大关注了，如果你有兴趣或者有需求可以试试，类似自动登录时按照元素匹配数据）
+解决办法：访问目录的url为 https://www.yuque.com/r/个人路径/知识库slug/toc，有兴趣的可以根据 html 的元素的特征来分析。（我个人没有这个需求也就没有太大关注了，如果你有兴趣或者有需求可以试试，类似自动登录时按照元素匹配数据）
 
 2.自动登录仅支持账号密码登录
 
