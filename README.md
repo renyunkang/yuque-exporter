@@ -19,10 +19,11 @@
 关于语雀的导出可以详情说明见官方的文档：[如何导入导出知识库](https://www.yuque.com/yuque/thyzgp/import-lake-to-lark) 
 
 首先语雀支持导出文档为 markdown 格式。
-单篇导出：支持导出为 markdown、word、pdf、lakebook等
-批量导出：支持导出为 lakebook、pdf 格式。对于超级用户是可以通过创建 token 来使用[官方的 exporter 工具](https://github.com/yuque/yuque-exporter)或者其他基于 api 的工具进行批量导出；超级用户的价格为 299/月。
+- 单篇导出：支持导出为 markdown、word、pdf、lakebook等
+- 批量导出：支持导出为 lakebook、pdf 格式。对于超级用户是可以通过创建 token 来使用[官方的 exporter 工具](https://github.com/yuque/yuque-exporter)或者其他基于 api 的工具进行批量导出；超级用户的价格为 299/年。
 
 lakebook 格式为语雀私有的格式：[lakebook 格式说明](https://www.yuque.com/yuque/developer/lt69uo)，语雀也没有相应的工具去支持迁移/导入到其他笔记软件。pdf 估计也不能直接导入其他笔记软件(这个没有研究过就不展开了)。
+
 因此对于想要迁移自己文档的普通用户以及会员用户来说，你只能一篇一篇导出来完成你的迁移动作，这些用户也大多有上百篇文档，这无疑是劝退。所以我的迁移计划也一再搁置，同时也再等待其他的更友好的导出方式出现。最后还是不想等了，请教 GPT 写了这个工具，确实也怕像我这种白嫖用户之后的迁移的成本越来越大了。
 
 > ps: 本人也不是专门写 nodejs 的，代码可能也是烂成狗屎，请大家不喜勿喷。谢谢！
