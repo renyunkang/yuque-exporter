@@ -182,7 +182,6 @@ if (!process.env.EXPORT_PATH) {
 
     for ( let i = 0; i < books.length; i++ ) {
       for (let j = 0; j < books[i].pages.length; j++ ) {
-        console.log("Download document " + books[i].name + "/" + books[i].pages[j].name)
         await downloadMardown(page, folderPath, books[i].name, books[i].pages[j].name, process.env.ACCESSURL + "/" + books[i].slug + "/" + books[i].pages[j].slug)
         console.log();
       }
@@ -234,12 +233,13 @@ async function downloadMardown(page, rootPath, book, mdname, docUrl) {
     }, link);
   }
 
-  console.log("Download URL: " + url)
+  // console.log(book + "/" + mdname + "'s download URL is: " + url)
   await goto(page, url);
 
   async function waitForDownload() {
     return new Promise((resolve, reject) => {
       const watcher = fs.watch(rootPath, (eventType, filename) => {
+        // console.log(`watch ${eventType} ${filename}`)
         if (eventType === 'rename' && filename.endsWith('.md')) {
           watcher.close();
           resolve(filename);
@@ -256,15 +256,16 @@ async function downloadMardown(page, rootPath, book, mdname, docUrl) {
   async function downloadFile(recount = 0, retries = 0) {
     var count = recount
     try {
-      const filename = await waitForDownload();
-      const oldFiles = path.join(rootPath, filename);
-      var newFiles = path.join(newPath, mdname.replace(/\//g, '-') + '.md');
+      const fileNameWithExt = await waitForDownload();
+      const oldFiles = path.join(rootPath, fileNameWithExt);
+      const fileName = path.basename((fileNameWithExt), path.extname(fileNameWithExt));
+      console.log("Download document " + book + "/" + fileName + " finished")
+      var newFiles = path.join(newPath, fileName.replace(/\//g, '-') + '.md');
       while (fs.existsSync(newFiles)) {
         count++;
-        newFiles = path.join(newPath, mdname.replace(/\//g, '-') + `(${count}).md`);
+        newFiles = path.join(newPath, fileName.replace(/\//g, '-') + `(${count}).md`);
       }
 
-      // console.log(`oldFiles:${oldFiles} and newFiles:${newFiles}`);
       fs.renameSync(oldFiles, newFiles);
       console.log('Moved file to:', newFiles);
     } catch (error) {
