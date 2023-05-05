@@ -182,7 +182,7 @@ if (!process.env.EXPORT_PATH) {
 
     for ( let i = 0; i < books.length; i++ ) {
       for (let j = 0; j < books[i].pages.length; j++ ) {
-        await downloadMardown(page, folderPath, books[i].name, books[i].pages[j].name, process.env.ACCESSURL + "/" + books[i].slug + "/" + books[i].pages[j].slug)
+        await downloadMardown(page, folderPath, books[i].name, books[i].pages[j].name.replace(/\//g, '_') , process.env.ACCESSURL + "/" + books[i].slug + "/" + books[i].pages[j].slug)
         console.log();
       }
     }
@@ -236,11 +236,16 @@ async function downloadMardown(page, rootPath, book, mdname, docUrl) {
   // console.log(book + "/" + mdname + "'s download URL is: " + url)
   await goto(page, url);
 
-  async function waitForDownload() {
+  async function waitForDownload(mdname, started = false) {
     return new Promise((resolve, reject) => {
       const watcher = fs.watch(rootPath, (eventType, filename) => {
-        // console.log(`watch ${eventType} ${filename}`)
-        if (eventType === 'rename' && filename.endsWith('.md')) {
+        // console.log(`watch ${eventType} ${filename}, want ${mdname}.md`)
+        if (eventType === 'rename' && filename === `${mdname}.md.crdownload` && !started) {
+      		console.log("Downloading document " + book + "/" + mdname)
+        	started = true
+        }
+
+        if (eventType === 'rename' && filename === `${mdname}.md` && started) {
           watcher.close();
           resolve(filename);
         }
@@ -253,17 +258,17 @@ async function downloadMardown(page, rootPath, book, mdname, docUrl) {
     });
   }
 
-  async function downloadFile(recount = 0, retries = 0) {
+  async function downloadFile(mdname, url, recount = 0, retries = 0) {
     var count = recount
     try {
-      const fileNameWithExt = await waitForDownload();
+      const fileNameWithExt = await waitForDownload(mdname);
       const oldFiles = path.join(rootPath, fileNameWithExt);
       const fileName = path.basename((fileNameWithExt), path.extname(fileNameWithExt));
       console.log("Download document " + book + "/" + fileName + " finished")
-      var newFiles = path.join(newPath, fileName.replace(/\//g, '-') + '.md');
+      var newFiles = path.join(newPath, fileName.replace(/\//g, '_') + '.md');
       while (fs.existsSync(newFiles)) {
         count++;
-        newFiles = path.join(newPath, fileName.replace(/\//g, '-') + `(${count}).md`);
+        newFiles = path.join(newPath, fileName.replace(/\//g, '_') + `(${count}).md`);
       }
 
       fs.renameSync(oldFiles, newFiles);
@@ -273,14 +278,14 @@ async function downloadMardown(page, rootPath, book, mdname, docUrl) {
       if (error.message === 'Download timed out' && retries < maxRetries) {
         console.log(`Retrying download... (attempt ${retries + 1})`);
         await goto(page, url);
-        await downloadFile(count, retries + 1);
+        await downloadFile(mdname, url, count, retries + 1);
       } else {
         console.log(`Download error: ` + error);
       }
     }
   }
 
-  await downloadFile()
+  await downloadFile(mdname, url)
 }
 
 
