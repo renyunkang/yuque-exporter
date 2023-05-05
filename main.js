@@ -241,8 +241,8 @@ async function downloadMardown(page, rootPath, book, mdname, docUrl) {
       const watcher = fs.watch(rootPath, (eventType, filename) => {
         // console.log(`watch ${eventType} ${filename}, want ${mdname}.md`)
         if (eventType === 'rename' && filename === `${mdname}.md.crdownload` && !started) {
-      		console.log("Downloading document " + book + "/" + mdname)
-        	started = true
+          console.log("Downloading document " + book + "/" + mdname)
+          started = true
         }
 
         if (eventType === 'rename' && filename === `${mdname}.md` && started) {
