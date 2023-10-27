@@ -76,7 +76,7 @@ for root, dirs, files in os.walk(markdown_folder):
                         new_img_link = f'{relative_path}/{years}/{img_filename}'
                     else:
                         replace_image_host = replace_image_host.rstrip("/")
-                        new_img_link = f'{replace_image_host}/images/{years}/{img_filename}'
+                        new_img_link = f'{replace_image_host}/{years}/{img_filename}'
                     markdown_content = markdown_content.replace(img_link, new_img_link)
                     replace_image_url = True
 

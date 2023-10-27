@@ -3,15 +3,20 @@
 ### 功能：
 
 - 模拟用户浏览器操作一篇一篇导出 markdown 文档
-- 支持同名的文档导出
+- 按照知识库目录导出文档
 - 支持导出失败重试
+- 导出文档中的图片到本地
+- 替换文档中的图片链接
 
-我的知识库与导出文件目录展示：
+> ps: 后面两个功能是使用 python 实现，可以单独使用
+
+效果展示：
+
 ![image.png](https://images.ryken.cloud/2023/05/91804cc3646d6356cd7458c9a12444fc.png)
 
 ![image.png](https://images.ryken.cloud/2023/05/4b3a4e4207ead71f15600806c12a5c1d.png)
 
-动图展示：![image.png](./images/exporter.gif)
+动图展示(旧版图，新版未更新图)：![image.png](./images/exporter.gif)
 
 ### 说明：
 
@@ -45,52 +50,98 @@ lakebook 格式为语雀私有的格式：[lakebook 格式说明](https://www.yu
 
 安装 yarn：npm install -g yarn --registry=https://registry.npm.taobao.org
 
-#### 3. 下载代码并运行工具
-**ubuntu**
+#### 3. 下载代码并导出
+**下载代码并安装依赖**
 ```bash
 git clone https://github.com/renyunkang/yuque-exporter.git
 cd yuque-exporter
 npm install --registry=https://registry.npm.taobao.org
-# 安装 JSONStream：npm install JSONStream --registry=https://registry.npm.taobao.org
-yarn
+# 安装 JSONStream：
+# npm install JSONStream --registry=https://registry.npm.taobao.org
 
-# 第一次是需要账号密码去登录的
+yarn
+# yarn 安装依赖如果下载报错的话，可以依据情况更换源。
+```
+
+**设置环境变量并使用工具导出**
+
+需要用到的环境变量：
+
+| 环境变量 | 选项 | 描述 |
+|--|--|--|
+| ACCESSURL | 必须 | 指定个人路径，填 https://www.yuque.com/xxx 中的 xxx |
+| USER | 必须(有cookie文件时非必须) | 登录的用户名 |
+| PASSWORD | 必须(有cookie文件时非必须) | 登录的密码 |
+| EXPORT_PATH | 非必须 | 指定导出路径，默认为当前工作目录下的 output 目录(自动创建) |
+
+
+- **ubuntu**
+```bash
+# 第一次运行时，使用 USER + PASSWORD 登录
+# ACCESSURL=xxx USER=xxx PASSWORD=xxx node main.js
 ACCESSURL=xxx USER=xxx PASSWORD=xxx EXPORT_PATH=/path/to/exporter node main.js
 
-# 登录一次后会保存 cookie，之后会使用cookie登录
+# 登录一次后会保存 cookie，之后使用cookie登录
+# ACCESSURL=xxx node main.js
 ACCESSURL=xxx EXPORT_PATH=/path/to/exporter node main.js
 ```
 
-yarn 安装依赖如果下载报错的话，可以依据情况更换源。
-
-**windows**
+- **windows**
 ```bash
-git clone https://github.com/renyunkang/yuque-exporter.git
-cd yuque-exporter
-npm install --registry=https://registry.npm.taobao.org
-# 安装 JSONStream：npm install JSONStream --registry=https://registry.npm.taobao.org
-yarn
-
-# cmd
+# 1. cmd
 set ACCESSURL="xxx"
 set USER="xxx"
 set PASSWORD="xxx"
-set EXPORT_PATH=/path/to/exporter
+# set EXPORT_PATH=/path/to/exporter
 node main.js
 
-# powershell
+# 2. powershell
+# $env:ACCESSURL="xxx";$env:USER="xxx";$env:PASSWORD="xxx"; node .\main.js
 $env:ACCESSURL="xxx";$env:USER="xxx";$env:PASSWORD="xxx";$env:EXPORT_PATH="/path/to/exporter"; node .\main.js
 ```
 
+- **MacOS**
+```bash
+... ...
+# 小的不才，还没有 macos 的本本，还望大佬来踩坑。
+```
+
+#### 4. 导出文档中的图片
+
+需要用到的几个环境变量：
+
+| 环境变量 | 选项 | 描述 |
+|--|--|--|
+| MARKDOWN_DIR | 非必须 | 指定 mardown 文件夹路径，默认为当前工作目录的 output 目录 |
+| DOWNLOAD_IMAGE | 非必须 | 指定是否导出图片，导出路径为 MARKDOWN_DIR 目录下的 images 目录，默认为 true |
+| UPDATE_MDIMG_URL | 非必须 | 指定是否更新文件中的图片路径，未指定 REPLACE_IMAGE_HOST 时，会更新为图片路径的相对路径。默认为 false |
+| REPLACE_IMAGE_HOST | 非必须 | 更新图片路径时自定义文件 url，格式为：{REPLACE_IMAGE_HOST}/{years}/{img_name}，在使用自定义对象存储时，建议上传图片时的路径符合前面的格式；默认为空 |
+
+**使用工具导出**
+
+```bash
+# 以 windows powershell 为例
+# 下载图片，不更新 mardown 源文件的图片链接
+python.exe .\export-image.py
+
+# 不下载图片，更新文件的图片为相对路径
+$env:DOWNLOAD_IMAGE="false";$env:UPDATE_MDIMG_URL="true"; python.exe .\export-image.py
+
+# 不下载图片，更新文件的图片为自定义对象存储(自定义域名)
+$env:DOWNLOAD_IMAGE="false";$env:UPDATE_MDIMG_URL="true"; $env:REPLACE_IMAGE_HOST="https://images.ryken.cloud/"; python.exe .\export-image.py
+```
+
+> ps: 
+> 1. 当使用 python 运行时，如果没有相关依赖的话，需要手动下载一下; pip install xxx
+> 2. 相关环境变量的是指同上面"下载代码并导出"
+> 3. 根据自己需要，指定不同环境变量的值，来满足不同的需求吧
+
+
+
 ### 存在的问题：
-1.无法获取知识库的目录信息，进一步做层级关系的文档导出存储
-现在普通用户无法获取知识库中的目录信息，因此知识库文档的导出后全部平铺保存到以知识库名称命名的文件夹中。同名的文档会在文档后面追加数字以区分，知识库目录的分级需要自己根据文档的内容进行调整。
+1.自动登录仅支持账号密码登录
 
-解决办法：访问目录的url为 https://www.yuque.com/r/个人路径/知识库slug/toc，有兴趣的可以根据 html 的元素的特征来分析。（我个人没有这个需求也就没有太大关注了，如果你有兴趣或者有需求可以试试，类似自动登录时按照元素匹配数据）
-
-2.自动登录仅支持账号密码登录
-
-3.无法保证兼容性，如果之后官方 api 修改后，可以自己根据 api 修改源码
+2.无法保证兼容性，如果之后官方 api 修改后，可以自己根据 api 修改源码
 
 ### Q&A
 1.  Could not find Chromium 但是有 chorm 浏览器
