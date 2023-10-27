@@ -1,291 +1,65 @@
 import puppeteer from 'puppeteer';
-import fs from 'fs';
-import JSONStream from 'JSONStream';
-import { Readable } from 'stream';
 import { exit } from 'process';
+import fs from 'fs';
 import path from 'path';
+import { autoLogin } from './src/login.js';
+import { getAllBooks } from './src/toc.js';
+import { exportMarkDownFiles } from './src/export.js';
+// import { printDirectoryTree } from './src/toc.js';
 
 
-class BookPage {
-  constructor(id, name, slug) {
-    this.id = id;
-    this.name = name;
-    this.slug = slug
-  }
-}
-
-class Book {
-  pages
-  pageLength
-  constructor(id, name, slug) {
-    this.id = id;
-    this.name = name;
-    this.slug = slug
-  }
-}
+let color = {
+    byNum: (mess, fgNum) => {
+        mess = mess || '';
+        fgNum = fgNum === undefined ? 31 : fgNum;
+        return '\u001b[' + fgNum + 'm' + mess + '\u001b[39m';
+    },
+    black: (mess) => color.byNum(mess, 30),
+    red: (mess) => color.byNum(mess, 31),
+    green: (mess) => color.byNum(mess, 32),
+    yellow: (mess) => color.byNum(mess, 33),
+    blue: (mess) => color.byNum(mess, 34),
+    magenta: (mess) => color.byNum(mess, 35),
+    cyan: (mess) => color.byNum(mess, 36),
+    white: (mess) => color.byNum(mess, 37)
+};
 
 
-if (!process.env.ACCESSURL) {
-  console.log('env var: ACCESSURL required')
-  process.exit(1);
-}
 
-
-if (!process.env.EXPORT_PATH) {
-  console.log('env var: EXPORT_PATH required')
-  process.exit(1);
-}
-
-(async () => {
-  // const page = await BrowserPage.getInstance();
-  const browser = await puppeteer.launch({ headless: true }); // true:not show browser
-  const page = await browser.newPage();
-
-  // 检查是否存在 cookie 文件
-  const cookieFile = './cookies.json';
-  let cookies = [];
-  if (fs.existsSync(cookieFile)) {
-      const cookiesString = fs.readFileSync(cookieFile);
-      cookies = JSON.parse(cookiesString);
-  }
-
-  // 如果存在 cookie，则直接加载
-  if (cookies.length > 0) {
-    console.log("Login use cookies...")
-    await page.setCookie(...cookies);
-    await page.goto('https://www.yuque.com/dashboard');
-  } else {
-    console.log("Login use user + password...")
-    if (!process.env.USER) {
-      console.log('no cookie so use env var: USER required')
-      process.exit(1);
-    }
-    
-    if (!process.env.PASSWORD) {
-      console.log('no cookie so use env var: PASSWORD required')
-      process.exit(1);
+async function run() {
+    if (!process.env.ACCESSURL) {
+        console.log('env var: ACCESSURL required')
+        process.exit(1);
     }
 
-    await page.goto('https://www.yuque.com/login');
-    // Switch to password login
-    await page.click('.switch-btn');
-
-    // Fill in phone number and password
-    await page.type('input[data-testid=prefix-phone-input]', process.env.USER);
-    await page.type('input[data-testid=loginPasswordInput]', process.env.PASSWORD);
-
-    // Check agreement checkbox
-    await page.click('input[data-testid=protocolCheckBox]');
-
-    // Click login button
-    await page.click('button[data-testid=btnLogin]');
-
-    // 等待页面跳转完成
-    await page.waitForNavigation();
-
-    // 保存 cookie 到本地文件
-    cookies = await page.cookies();
-    fs.writeFileSync(cookieFile, JSON.stringify(cookies));
-    
-    console.log("Save cookie to cookies.json")
-  }
-  console.log("Login successfully!")
-  console.log()
-
-  
-  // await page.goto('https://www.yuque.com/dashboard/books');
-  // // 获取所有知识库元素
-  // await page.waitForSelector('div[data-type="Book"]', { waitUntil: 'networkidle0' });
-  // const books = await page.$$eval('div[data-type="Book"] .book-name-text', elements => elements.map(element => element.textContent));
-  // const links = await page.$$eval('div[data-type="Book"] a[data-testid="adapter-link"]', elements => elements.map(element => element.getAttribute('href')));
-
-  // // 打印每个知识库的标题
-  // console.log("知识库的数量为：" + books.length);
-
-  // for  (let i = 0; i < books.length; i++) {
-  //   console.log(books[i]);
-  //   console.log(links[i]);
-  // }
-
-
-  console.log("Get book stacks ...")
-  var books = [];
-  const response = await page.goto('https://www.yuque.com/api/mine/book_stacks', { waitUntil: 'networkidle0' });
-  const bookListData = await response.text();
-  
-  const stream = new Readable({
-    read() {
-      this.push(bookListData);
-      this.push(null); // stream end
+    if (!process.env.EXPORT_PATH) {
+        const outputDir = path.join(process.cwd(), 'output');
+        if (!fs.existsSync(outputDir)) {
+            fs.mkdirSync(outputDir);
+        }
+        process.env.EXPORT_PATH = outputDir;
+        console.log(`The environment variable EXPORT_PATH is not set, so the default ${outputDir} is used as the export path.`)
     }
-  });
-  const parser = JSONStream.parse('data.*');
-  stream.pipe(parser);
-  parser.on('data', function(object) {
-    for ( let i = 0; i < object.books.length; i++ ) {
-      books.push(new Book(object.books[i].id, object.books[i].name, object.books[i].slug))
-    }
-  });
 
+    // const page = await BrowserPage.getInstance();
+    const browser = await puppeteer.launch({ headless: true }); // true:not show browser
+    const page = await browser.newPage();
 
-  await new Promise(resolve => {
-    parser.on('end', async () => {
-      console.log(`Books count is: ${books.length}`)
-      var bookPages = [];
-      for ( let i = 0; i < books.length; i++ ) {
-        bookPages[i] = [];
-        var bookUrl = 'https://www.yuque.com/api/docs?book_id=' + books[i].id
-        var bookResponse = await page.goto(bookUrl, { waitUntil: 'networkidle0' });
-        var pageListData = await bookResponse.text();
-        var bookStream = new Readable({
-          read() {
-            this.push(pageListData);
-            this.push(null); // stream end
-          }
-        });
-        var bookParser = JSONStream.parse('data.*');
-        bookStream.pipe(bookParser);
-        bookParser.on('data', (object) => {
-          bookPages[i].push(new BookPage(object.id, object.title, object.slug))
-        });
-
-        bookParser.on('end', () => {
-          console.log(`No.${i+1} Book's name: ${books[i].name}`)
-          console.log(bookPages[i])
-          console.log()
-          books[i].pages = bookPages[i]
-          books[i].pageLength = bookPages[i].length
-          
-          if (i === books.length - 1) {
-            resolve();
-          }
-        });
-      }
-    });
-  }).then(async () => {
+    // 检查是否存在 cookie 文件
+    await autoLogin(page)
+    console.log(color.green("Login successfully!"))
     console.log()
+
+    console.log("Get book stacks ...")
+    const books = await getAllBooks(page)
+    // console.log(books)
+
     console.log("Start export all books ...")
-    console.log()
+    await exportMarkDownFiles(page, books)
 
-    const folderPath = process.env.EXPORT_PATH;
-    console.log("download folderPath: " + folderPath)
-    if (!fs.existsSync(folderPath)) {
-      console.error(`export path:${folderPath} is not exist`)
-      process.exit(1)
-    }
-  
-    const client = await page.target().createCDPSession()
-    await client.send('Page.setDownloadBehavior', {
-      behavior: 'allow',
-      downloadPath: folderPath,
-    })
-
-    for ( let i = 0; i < books.length; i++ ) {
-      for (let j = 0; j < books[i].pages.length; j++ ) {
-        await downloadMardown(page, folderPath, books[i].name, books[i].pages[j].name.replace(/\//g, '_') , process.env.ACCESSURL + "/" + books[i].slug + "/" + books[i].pages[j].slug)
-        console.log();
-      }
-    }
+    browser.close()
+};
 
 
-    fs.readdir(folderPath, (err, files) => {
-      if (err) throw err;
-
-      files.forEach((file) => {
-        const filePath = path.join(folderPath, file);
-        fs.stat(filePath, (err, stat) => {
-          if (err) throw err;
-
-          if (stat.isFile()) {    
-            fs.unlink(filePath, (err) => {
-              if (err) throw err;
-            });
-          }
-        });
-      });
-      
-    console.log()
-    console.log(`Clean useless files successfully`);
-    console.log()
-    console.log(`Export successfully! Have a good day!`);
-    console.log()
-    });
-  });
-
-  browser.close()
-})();
-
-
-// browserpage, bookName, url
-async function downloadMardown(page, rootPath, book, mdname, docUrl) {
-  const url = 'https://www.yuque.com/' + docUrl + '/markdown?attachment=true&latexcode=false&anchor=false&linebreak=false';
-  const timeout = 10000; // 10s timeout
-  const maxRetries = 3; // max retry count
-
-  const newPath = path.join(rootPath, book);
-  if (!fs.existsSync(newPath)) {
-    fs.mkdirSync(newPath)
-  }
-
-  async function goto(page, link) {
-    return page.evaluate((link) => {
-        location.href = link;
-    }, link);
-  }
-
-  // console.log(book + "/" + mdname + "'s download URL is: " + url)
-  await goto(page, url);
-
-  async function waitForDownload(mdname, started = false) {
-    return new Promise((resolve, reject) => {
-      const watcher = fs.watch(rootPath, (eventType, filename) => {
-        // console.log(`watch ${eventType} ${filename}, want ${mdname}.md`)
-        if (eventType === 'rename' && filename === `${mdname}.md.crdownload` && !started) {
-          console.log("Downloading document " + book + "/" + mdname)
-          started = true
-        }
-
-        if (eventType === 'rename' && filename === `${mdname}.md` && started) {
-          watcher.close();
-          resolve(filename);
-        }
-      });
-
-      setTimeout(() => {
-        watcher.close();
-        reject(new Error('Download timed out'));
-      }, timeout);
-    });
-  }
-
-  async function downloadFile(mdname, url, recount = 0, retries = 0) {
-    var count = recount
-    try {
-      const fileNameWithExt = await waitForDownload(mdname);
-      const oldFiles = path.join(rootPath, fileNameWithExt);
-      const fileName = path.basename((fileNameWithExt), path.extname(fileNameWithExt));
-      console.log("Download document " + book + "/" + fileName + " finished")
-      var newFiles = path.join(newPath, fileName.replace(/\//g, '_') + '.md');
-      while (fs.existsSync(newFiles)) {
-        count++;
-        newFiles = path.join(newPath, fileName.replace(/\//g, '_') + `(${count}).md`);
-      }
-
-      fs.renameSync(oldFiles, newFiles);
-      console.log('Moved file to:', newFiles);
-    } catch (error) {
-      console.log(error);
-      if (error.message === 'Download timed out' && retries < maxRetries) {
-        console.log(`Retrying download... (attempt ${retries + 1})`);
-        await goto(page, url);
-        await downloadFile(mdname, url, count, retries + 1);
-      } else {
-        console.log(`Download error: ` + error);
-      }
-    }
-  }
-
-  await downloadFile(mdname, url)
-}
-
+run();
 
