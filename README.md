@@ -36,12 +36,7 @@ lakebook 格式为语雀私有的格式：[lakebook 格式说明](https://www.yu
 ### 使用：
 > 确保你的环境有 Chromium 浏览器。如 Google Chrome、Microsoft Edge、Opera 和 Brave等，都是基于 Chromium 浏览器构建的。
 
-#### 1. 获取个人文档访问路径
-访问个人账号管理： https://www.yuque.com/settings/account
-
-个人路径：账号设置 -> 账号管理可以查看已经设置的个人路径 `https://www.yuque.com/xxx`
-
-#### 2. 安装 node 相关的工具
+#### 1. 安装 node 相关的工具
 建议使用 nvm 管理 node，选取下列适合自己的方式安装：
 - github 地址：[nvm-sh/nvm: Node Version Manager](https://github.com/nvm-sh/nvm)
 - gitee 地址：[nvm-cn: 🧊 nvm国内安装工具 (gitee.com)](https://gitee.com/RubyKids/nvm-cn)
@@ -50,7 +45,7 @@ lakebook 格式为语雀私有的格式：[lakebook 格式说明](https://www.yu
 
 安装 yarn：npm install -g yarn --registry=https://registry.npm.taobao.org
 
-#### 3. 下载代码并导出
+#### 2. 下载代码并导出
 **下载代码并安装依赖**
 ```bash
 git clone https://github.com/renyunkang/yuque-exporter.git
@@ -59,8 +54,8 @@ npm install --registry=https://registry.npm.taobao.org
 # 安装 JSONStream：
 # npm install JSONStream --registry=https://registry.npm.taobao.org
 
-yarn
 # yarn 安装依赖如果下载报错的话，可以依据情况更换源。
+yarn
 ```
 
 **设置环境变量并使用工具导出**
@@ -104,7 +99,7 @@ $env:USER="xxx";$env:PASSWORD="xxx";$env:EXPORT_PATH="/path/to/exporter"; node .
 # 小的不才，还没有 macos 的本本，还望大佬来踩坑。
 ```
 
-#### 4. 导出文档中的图片
+#### 3. 导出文档中的图片
 
 需要用到的几个环境变量：
 
