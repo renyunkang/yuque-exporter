@@ -141,7 +141,7 @@ $env:DOWNLOAD_IMAGE="false";$env:UPDATE_MDIMG_URL="true"; $env:REPLACE_IMAGE_HOS
 
 2.无法保证兼容性，如果之后官方 api 修改后，可以自己根据 api 修改源码
 
-3.无法导出内容为纯表格的文档(官方也不支持将其直接导出为 markdown)
+3.无法导出内容为纯表格/思维导出的文档(官方也不支持将其直接导出为 markdown)；因此报错的 timeout，可能为这些类型的文档，请重复确认后手动导出为其他格式。
 
 4.团队的导出未测试
 

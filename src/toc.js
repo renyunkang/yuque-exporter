@@ -46,7 +46,7 @@ export async function getAllBooks(page) {
 
     for (const object of bookData) {
         for (let i = 0; i < object.books.length; i++) {
-            const book = new Book(object.books[i].id, object.books[i].name.replace(/\//g, "_").trim(), object.books[i].slug);
+            const book = new Book(object.books[i].id, delNonStdChars(object.books[i].name), object.books[i].slug);
             book.root = await getBookDetail(page, book);
             book.user_url = object.books[i].user.login
             books.push(book);
@@ -71,7 +71,7 @@ export async function getAllBooks(page) {
 //             if (firstSubItem === undefined && object.parent_uuid === "") {
 //                 firstSubItem = object;
 //             }
-//             const bookPage = new BookPage(object.id, object.uuid, object.title.replace(/\//g, "_").trim(),
+//             const bookPage = new BookPage(object.id, object.uuid, delNonStdChars(object.title),
 //                 object.url, object.type, object.parent_uuid, object.child_uuid, object.sibling_uuid);
 //             uuidMap.set(object.uuid, bookPage);
 //         });
@@ -83,7 +83,7 @@ export async function getAllBooks(page) {
 //     });
 
 //     const { firstSubItem, uuidMap } = bookData;
-//     const root = { name: book.name.replace(/\//g, "_").trim(), type: type.Book, object: book };
+//     const root = { name: delNonStdChars(book.name), type: type.Book, object: book };
 //     if (firstSubItem) {
 //         buildDirectoryTree(uuidMap, firstSubItem.uuid, root);
 //         printDirectoryTree(root);
@@ -105,14 +105,14 @@ async function getBookDetail(page, book) {
             if (fristSubItem === undefined && object.parent_uuid === "") {
                 fristSubItem = object;
             }
-            const bookPage = new BookPage(object.id, object.uuid, object.title.replace(/\//g, "_").trim(),
+            const bookPage = new BookPage(object.id, object.uuid, delNonStdChars(object.title),
                 object.url, object.type, object.parent_uuid, object.child_uuid, object.sibling_uuid);
             uuidMap.set(object.uuid, bookPage);
         });
 
         parser.on('end', () => {
             // 创建一个目录树的根节点
-            const root = { name: book.name.replace(/\//g, "_").trim(), type: type.Book, object: book };
+            const root = { name: delNonStdChars(book.name), type: type.Book, object: book };
             if (fristSubItem) {
                 buildDirectoryTree(uuidMap, fristSubItem.uuid, root);
                 printDirectoryTree(root);
@@ -167,4 +167,13 @@ export function printDirectoryTree(node, indent = 0) {
             printDirectoryTree(childNode, indent + 1);
         });
     }
+}
+
+function delNonStdChars(str) {
+    return str.replace(/\//g, "_").
+        replace(/"/g, '_').
+        replace(/:/g, '_').
+        replace(/\?/g, '_').
+        replace(/[\\/:\*\?"<>\|]/g, '').
+        trim();
 }
