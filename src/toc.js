@@ -27,29 +27,69 @@ class Book {
     }
 }
 
-
 export async function getAllBooks(page) {
-    return new Promise(async (resolve, reject) => {
-        const books = [];
-        const response = await page.goto('https://www.yuque.com/api/mine/book_stacks', { waitUntil: 'networkidle0' });
-        const data = await response.text();
-        const parser = jsonstream.parse('data.*');
-        
-        parser.on('data', async (object) => {
-            for (let i = 0; i < object.books.length; i++) {
-                const book = new Book(object.books[i].id, object.books[i].name.replace(/\//g, "_").trim(), object.books[i].slug);
-                book.root = await getBookDetail(page, book);
-                books.push(book);
-            }
-            
-            console.log(`Books count is: ${books.length}`);
-            resolve(books);
+    const books = [];
+    const response = await page.goto('https://www.yuque.com/api/mine/book_stacks', { waitUntil: 'networkidle0' });
+    const data = await response.text();
+    const parser = jsonstream.parse('data.*');
+    
+    const bookData = await new Promise((resolve) => {
+        const parsedBooks = [];
+        parser.on('data', (object) => {
+            parsedBooks.push(object);
         });
-
+        parser.on('end', () => {
+            resolve(parsedBooks);
+        });
         parser.end(data);
     });
+
+    for (const object of bookData) {
+        for (let i = 0; i < object.books.length; i++) {
+            const book = new Book(object.books[i].id, object.books[i].name.replace(/\//g, "_").trim(), object.books[i].slug);
+            book.root = await getBookDetail(page, book);
+            books.push(book);
+        }
+    }
+
+    console.log(`Books count is: ${books.length}`);
+    return books;
 }
 
+// async function getBookDetail(page, book) {
+//     const url = 'https://www.yuque.com/api/catalog_nodes?book_id=' + book.id;
+//     const response = await page.goto(url, { waitUntil: 'networkidle0' });
+//     const data = await response.text();
+//     const parser = jsonstream.parse('data.*');
+
+//     const bookData = await new Promise((resolve) => {
+//         var uuidMap = new Map();
+//         let firstSubItem;
+
+//         parser.on('data', (object) => {
+//             if (firstSubItem === undefined && object.parent_uuid === "") {
+//                 firstSubItem = object;
+//             }
+//             const bookPage = new BookPage(object.id, object.uuid, object.title.replace(/\//g, "_").trim(),
+//                 object.url, object.type, object.parent_uuid, object.child_uuid, object.sibling_uuid);
+//             uuidMap.set(object.uuid, bookPage);
+//         });
+
+//         parser.on('end', () => {
+//             resolve({ firstSubItem, uuidMap });
+//         });
+//         parser.end(data);
+//     });
+
+//     const { firstSubItem, uuidMap } = bookData;
+//     const root = { name: book.name.replace(/\//g, "_").trim(), type: type.Book, object: book };
+//     if (firstSubItem) {
+//         buildDirectoryTree(uuidMap, firstSubItem.uuid, root);
+//         printDirectoryTree(root);
+//     }
+
+//     return root;
+// }
 
 async function getBookDetail(page, book) {
     return new Promise(async (resolve, reject) => {
