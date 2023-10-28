@@ -19,7 +19,7 @@ class BookPage {
 
 class Book {
     root
-    length
+    user_url
     constructor(id, name, slug) {
       this.id = id;
       this.name = name;
@@ -48,6 +48,7 @@ export async function getAllBooks(page) {
         for (let i = 0; i < object.books.length; i++) {
             const book = new Book(object.books[i].id, object.books[i].name.replace(/\//g, "_").trim(), object.books[i].slug);
             book.root = await getBookDetail(page, book);
+            book.user_url = object.books[i].user.login
             books.push(book);
         }
     }

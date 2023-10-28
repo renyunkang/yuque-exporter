@@ -69,7 +69,6 @@ yarn
 
 | 环境变量 | 选项 | 描述 |
 |--|--|--|
-| ACCESSURL | 必须 | 指定个人路径，填 https://www.yuque.com/xxx 中的 xxx |
 | USER | 必须(有cookie文件时非必须) | 登录的用户名 |
 | PASSWORD | 必须(有cookie文件时非必须) | 登录的密码 |
 | EXPORT_PATH | 非必须 | 指定导出路径，默认为当前工作目录下的 output 目录(自动创建) |
@@ -78,26 +77,25 @@ yarn
 - **ubuntu**
 ```bash
 # 第一次运行时，使用 USER + PASSWORD 登录
-# ACCESSURL=xxx USER=xxx PASSWORD=xxx node main.js
-ACCESSURL=xxx USER=xxx PASSWORD=xxx EXPORT_PATH=/path/to/exporter node main.js
+# USER=xxx PASSWORD=xxx node main.js
+USER=xxx PASSWORD=xxx EXPORT_PATH=/path/to/exporter node main.js
 
 # 登录一次后会保存 cookie，之后使用cookie登录
-# ACCESSURL=xxx node main.js
-ACCESSURL=xxx EXPORT_PATH=/path/to/exporter node main.js
+# node main.js
+EXPORT_PATH=/path/to/exporter node main.js
 ```
 
 - **windows**
 ```bash
 # 1. cmd
-set ACCESSURL="xxx"
 set USER="xxx"
 set PASSWORD="xxx"
 # set EXPORT_PATH=/path/to/exporter
 node main.js
 
 # 2. powershell
-# $env:ACCESSURL="xxx";$env:USER="xxx";$env:PASSWORD="xxx"; node .\main.js
-$env:ACCESSURL="xxx";$env:USER="xxx";$env:PASSWORD="xxx";$env:EXPORT_PATH="/path/to/exporter"; node .\main.js
+# $env:USER="xxx";$env:PASSWORD="xxx"; node .\main.js
+$env:USER="xxx";$env:PASSWORD="xxx";$env:EXPORT_PATH="/path/to/exporter"; node .\main.js
 ```
 
 - **MacOS**
@@ -142,6 +140,10 @@ $env:DOWNLOAD_IMAGE="false";$env:UPDATE_MDIMG_URL="true"; $env:REPLACE_IMAGE_HOS
 1.自动登录仅支持账号密码登录
 
 2.无法保证兼容性，如果之后官方 api 修改后，可以自己根据 api 修改源码
+
+3.无法导出内容为纯表格的文档(官方也不支持将其直接导出为 markdown)
+
+4.团队的导出未测试
 
 ### Q&A
 1.  Could not find Chromium 但是有 chorm 浏览器

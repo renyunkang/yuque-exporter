@@ -47,7 +47,7 @@ async function exportMarkDownFileTree(page, folderPath, book, node) {
                 downloadPath: folderPath,
             })
             await downloadMardown(page, folderPath, book.name, node.name.replace(/\//g, '_'),
-                process.env.ACCESSURL + "/" + book.slug + "/" + node.object.url)
+                book.user_url + "/" + book.slug + "/" + node.object.url)
             break;
     }
 

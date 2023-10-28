@@ -27,11 +27,6 @@ let color = {
 
 
 async function run() {
-    if (!process.env.ACCESSURL) {
-        console.log('env var: ACCESSURL required')
-        process.exit(1);
-    }
-
     if (!process.env.EXPORT_PATH) {
         const outputDir = path.join(process.cwd(), 'output');
         if (!fs.existsSync(outputDir)) {
