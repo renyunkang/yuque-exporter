@@ -95,8 +95,12 @@ $env:USER="xxx";$env:PASSWORD="xxx";$env:EXPORT_PATH="/path/to/exporter"; node .
 
 - **MacOS**
 ```bash
-... ...
-# 小的不才，还没有 macos 的本本，还望大佬来踩坑。
+# 密码有特殊字符，建议单引号处理
+export USER='xxx'
+export PASSWORD='xxx'
+
+# 运行
+node main.js
 ```
 
 #### 3. 导出文档中的图片
