@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { type } from './const.js';
+import { baseurl } from './baseurl.js';
 
 export async function exportMarkDownFiles(page, books) {
     const folderPath = process.env.EXPORT_PATH;
@@ -61,7 +62,7 @@ async function exportMarkDownFileTree(page, folderPath, book, node) {
 
 // browserpage, bookName, url
 async function downloadMardown(page, rootPath, book, mdname, docUrl) {
-    const url = 'https://www.yuque.com/' + docUrl + '/markdown?attachment=true&latexcode=false&anchor=false&linebreak=false';
+    const url = baseurl + "/" + docUrl + '/markdown?attachment=true&latexcode=false&anchor=false&linebreak=false';
     // console.log(book + "/" + mdname + "'s download URL is: " + url)
     // console.log(rootPath)
 
