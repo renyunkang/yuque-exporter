@@ -2,6 +2,7 @@ import fs from 'fs';
 import { Readable } from 'stream';
 import { type } from './const.js';
 import jsonstream from 'jsonstream';
+import { baseurl } from './baseurl.js';
 
 class BookPage {
     constructor(id, uuid, name, url, type, parent_uuid, child_uuid, sibling_uuid) {
@@ -29,7 +30,7 @@ class Book {
 
 export async function getAllBooks(page) {
     const books = [];
-    const response = await page.goto('https://www.yuque.com/api/mine/book_stacks', { waitUntil: 'networkidle0' });
+    const response = await page.goto(baseurl + '/api/mine/common_used', { waitUntil: 'networkidle0' });
     const data = await response.text();
     const parser = jsonstream.parse('data.*');
     
@@ -45,11 +46,16 @@ export async function getAllBooks(page) {
     });
 
     for (const object of bookData) {
-        for (let i = 0; i < object.books.length; i++) {
-            const book = new Book(object.books[i].id, delNonStdChars(object.books[i].name), object.books[i].slug);
-            book.root = await getBookDetail(page, book);
-            book.user_url = object.books[i].user.login
-            books.push(book);
+        if (object.length == 0 ){
+            continue
+        }
+        for (let i = 0; i < object.length; i++) {
+            if (object[i].type == 'Book') {
+                const book = new Book(object[i].target.id, delNonStdChars(object[i].target.name), object[i].target.slug);
+                book.root = await getBookDetail(page, book);
+                book.user_url = object[i].target.user.login
+                books.push(book);
+            }
         }
     }
 
@@ -96,7 +102,7 @@ async function getBookDetail(page, book) {
     return new Promise(async (resolve, reject) => {
         var uuidMap = new Map();
         let fristSubItem;
-        var url = 'https://www.yuque.com/api/catalog_nodes?book_id=' + book.id;
+        var url = baseurl + '/api/catalog_nodes?book_id=' + book.id;
         var response = await page.goto(url, { waitUntil: 'networkidle0' });
         var data = await response.text();
         var parser = jsonstream.parse('data.*');
