@@ -33,6 +33,8 @@ export async function autoLogin(page) {
       await page.type('input[data-testid=prefix-phone-input]', process.env.USER);
       await page.type('input[data-testid=loginPasswordInput]', process.env.PASSWORD);
   
+      await scrollCaptcha(page)
+
       // Check agreement checkbox
       await page.click('input[data-testid=protocolCheckBox]');
   
@@ -50,3 +52,17 @@ export async function autoLogin(page) {
     }
 }
 
+async function scrollCaptcha(page) {
+  const start = await page.$('span[id="nc_2_n1z"]');
+  const startinfo = await start.boundingBox();
+  // console.log(startinfo.x)
+  const end =  await page.waitForSelector('.nc-lang-cnt');
+  const endinfo = await end.boundingBox();
+  
+  await page.mouse.move(startinfo.x,endinfo.y);
+  await page.mouse.down();
+  for(var i=0;i<endinfo.width;i++) {
+      await page.mouse.move(startinfo.x+i,endinfo.y);
+  }
+  await page.mouse.up();
+}
