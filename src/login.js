@@ -1,4 +1,5 @@
 import fs from 'fs';
+import { baseurl } from './baseurl.js';
 
 export async function autoLogin(page) {
     const cookieFile = './cookies.json';
@@ -12,7 +13,7 @@ export async function autoLogin(page) {
     if (cookies.length > 0) {
       console.log("Login use cookies...")
       await page.setCookie(...cookies);
-      await page.goto('https://www.yuque.com/dashboard');
+      await page.goto(baseurl + '/dashboard');
     } else {
       console.log("Login use user + password...")
       if (!process.env.USER) {
@@ -25,7 +26,7 @@ export async function autoLogin(page) {
         process.exit(1);
       }
   
-      await page.goto('https://www.yuque.com/login');
+      await page.goto(baseurl + '/login');
       // Switch to password login
       await page.click('.switch-btn');
   
