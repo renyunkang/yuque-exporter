@@ -41,9 +41,9 @@ lakebook 格式为语雀私有的格式：[lakebook 格式说明](https://www.yu
 - github 地址：[nvm-sh/nvm: Node Version Manager](https://github.com/nvm-sh/nvm)
 - gitee 地址：[nvm-cn: 🧊 nvm国内安装工具 (gitee.com)](https://gitee.com/RubyKids/nvm-cn)
 
-配置 npm 淘宝源：npm config set registry https://registry.npm.taobao.org
+配置 npm 淘宝源：npm config set registry https://registry.npmmirror.com
 
-安装 yarn：npm install -g yarn --registry=https://registry.npm.taobao.org
+安装 yarn：npm install -g yarn --registry=https://registry.npmmirror.com
 
 #### 2. 下载代码并导出
 **下载代码并安装依赖**
