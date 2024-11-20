@@ -51,12 +51,10 @@ for root, dirs, files in os.walk(markdown_folder):
 
                 path_parts = parsed_url.path.split('/')
                 LATEX_PATTERN = r'/yuque/__latex/([^/]+\.svg)$'
-                # print(parsed_url.path)
                 if re.match(LATEX_PATTERN, parsed_url.path):
                     years = str(datetime.datetime.now().year)
                 elif len(path_parts) > 3:
                     years = path_parts[3]
-                    print(path_parts)
                     if not re.match(r'^2\d{3}$', years):
                         print(f"[Warning]: The markdown {file} file's image URL {parsed_url.path} format in markdown does not match the Yuque URL that we expect. There may be a problem with the parsing and the image won't be downloaded. Please pay attention.")                        
                         continue
