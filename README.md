@@ -12,9 +12,9 @@
 
 效果展示：
 
-![image.png](https://images.codingryken.eu.org/2023/05/91804cc3646d6356cd7458c9a12444fc.png)
+![image.png](https://images.cherryfloris.eu.org/ryken/2023/05/91804cc3646d6356cd7458c9a12444fc.png)
 
-![image.png](https://images.codingryken.eu.org/2023/05/4b3a4e4207ead71f15600806c12a5c1d.png)
+![image.png](https://images.cherryfloris.eu.org/ryken/2023/05/4b3a4e4207ead71f15600806c12a5c1d.png)
 
 动图展示(旧版图，新版未更新图)：![image.png](./images/exporter.gif)
 
@@ -151,7 +151,7 @@ $env:DOWNLOAD_IMAGE="false";$env:UPDATE_MDIMG_URL="true"; $env:REPLACE_IMAGE_HOS
 -   macOS: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
 -   Linux: /usr/bin/google-chrome
 如果主机上对应的可执行文件路径与默认一致但仍然运行失败，可以修改源码手动指定一下，如果没有chorme也可以执行edge的二进制文件
-![image.png](https://images.codingryken.eu.org/2023/05/eb093fe57cb0b6cc557a9616f5899445.png)
+![image.png](https://images.cherryfloris.eu.org/ryken/2023/05/eb093fe57cb0b6cc557a9616f5899445.png)
 ```js
 const browser = await puppeteer.launch({ headless: true });
  to
