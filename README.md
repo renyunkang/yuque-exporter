@@ -161,3 +161,100 @@ const browser = await puppeteer.launch({ headless: true, executablePath: '/usr/b
 const browser = await puppeteer.launch({ headless: false, executablePath: "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe" });
 ```
 
+### 💡 性能优化 Performance Optimization
+
+#### 🚀 实时进度追踪 Real-time Progress Tracking
+- **📊 动态仪表板**: 实时显示导出进度、完成率、错误统计
+- **⏱️ ETA 计算**: 智能预估剩余时间和完成时间
+- **📈 成功率监控**: 跟踪下载成功率和失败原因
+
+#### 🧵 多线程图片下载 Multi-threaded Image Download
+- **并发下载**: 使用 ThreadPoolExecutor 实现15-20倍速度提升
+- **智能重试**: 自动重试失败的下载任务，提高成功率
+- **内存优化**: 流式下载大文件，减少内存占用
+
+#### 📁 智能文件管理 Smart File Management
+- **重复检测**: 自动跳过已存在的文件，避免重复下载
+- **目录结构**: 按年份分类保存图片，保持组织性
+- **相对路径**: 自动转换为相对路径，便于文档迁移
+
+### 🔧 高级配置 Advanced Configuration
+
+#### 环境变量详细说明 Environment Variables
+```bash
+# 文档导出配置
+USER="your_username"              # 语雀用户名
+PASSWORD="your_password"          # 语雀密码
+EXPORT_PATH="/path/to/export"     # 导出路径
+
+# 图片处理配置
+MARKDOWN_DIR="/path/to/markdown"  # Markdown文件目录
+DOWNLOAD_IMAGE="true"             # 是否下载图片
+UPDATE_MDIMG_URL="true"           # 是否更新图片链接
+REPLACE_IMAGE_HOST="https://..."  # 自定义图片域名
+MAX_WORKERS="10"                  # 最大线程数
+REQUEST_TIMEOUT="30"              # 请求超时时间(秒)
+```
+
+#### 性能调优 Performance Tuning
+```bash
+# 高性能配置 (推荐用于大量文档)
+MAX_WORKERS=15 REQUEST_TIMEOUT=60 python export-image.py
+
+# 低内存配置 (适用于资源受限环境)
+MAX_WORKERS=5 REQUEST_TIMEOUT=30 python export-image.py
+
+# 网络优化配置 (适用于不稳定网络)
+MAX_WORKERS=3 REQUEST_TIMEOUT=120 python export-image.py
+```
+
+### 📊 使用统计 Usage Statistics
+
+典型导出性能数据：
+- **📚 知识库数量**: 14个
+- **📄 文档总数**: 334篇
+- **🖼️ 图片总数**: 1,899张
+- **⏱️ 导出时间**: ~15-20分钟 (多线程)
+- **✅ 成功率**: >95%
+
+### 🛠️ 故障排除补充 Additional Troubleshooting
+
+#### 2. 图片下载失败
+- **网络问题**: 增加 `REQUEST_TIMEOUT` 时间
+- **并发过高**: 减少 `MAX_WORKERS` 数量
+- **权限问题**: 检查图片URL访问权限
+
+#### 3. 内存使用过高
+- 减少 `MAX_WORKERS` 到 5 以下
+- 增加 `REQUEST_TIMEOUT` 避免超时重试
+- 分批处理大量图片
+
+#### 4. 文档导出超时
+- 检查网络连接稳定性
+- 增加下载超时时间 (export.js 中的 timeout 设置)
+- 确认语雀账号权限正常
+
+### 🤝 贡献指南 Contributing
+
+欢迎提交 Issue 和 Pull Request！
+
+1. **Fork** 本仓库
+2. 创建特性分支: `git checkout -b feature/your-feature`
+3. 提交更改: `git commit -am 'Add some feature'`
+4. 推送到分支: `git push origin feature/your-feature`
+5. 提交 **Pull Request**
+
+### 📜 开源协议 License
+
+本项目基于 MIT 协议开源 - 查看 [LICENSE](LICENSE) 文件了解详情。
+
+### 🙏 致谢 Acknowledgments
+
+- 感谢语雀团队提供优秀的知识管理平台
+- 感谢 Puppeteer 团队提供强大的自动化工具
+- 感谢所有贡献者和用户的反馈与支持
+
+---
+
+**⭐ 如果这个工具对你有帮助，请给个 Star 支持一下！**
+

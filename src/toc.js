@@ -31,11 +31,47 @@ export async function getAllBooks(page) {
     const books = [];
     const response = await page.goto('https://www.yuque.com/api/mine/book_stacks', { waitUntil: 'networkidle0' });
     const data = await response.text();
+    
+    // Debug: Log the raw response
+    console.log('API Response Status:', response.status());
+    console.log('API Response Length:', data.length);
+    
+    // If we get a 401, it's definitely an auth issue
+    if (response.status() === 401) {
+        console.error('❌ 401 Unauthorized - Authentication failed!');
+        console.log('Response data:', data);
+        console.error('Your cookies may have expired. Try deleting cookies.json and running with USER/PASSWORD again.');
+        return books;
+    }
+    
+    // Check if response looks like JSON
+    if (data.startsWith('<') || data.includes('<!DOCTYPE')) {
+        console.error('❌ Received HTML instead of JSON - possible authentication issue');
+        console.log('Response preview:', data.substring(0, 200) + '...');
+        return books;
+    }
+    
+    try {
+        // Try to parse as JSON first to check structure
+        const jsonData = JSON.parse(data);
+        console.log('JSON Structure:', Object.keys(jsonData));
+        if (jsonData.data) {
+            console.log('Data array length:', jsonData.data.length);
+        }
+    } catch (e) {
+        console.error('❌ Failed to parse JSON:', e.message);
+        return books;
+    }
+    
     const parser = jsonstream.parse('data.*');
     
     const bookData = await new Promise((resolve) => {
         const parsedBooks = [];
         parser.on('data', (object) => {
+            console.log('Parsed object:', Object.keys(object));
+            if (object.books) {
+                console.log('Books in object:', object.books.length);
+            }
             parsedBooks.push(object);
         });
         parser.on('end', () => {
@@ -44,12 +80,19 @@ export async function getAllBooks(page) {
         parser.end(data);
     });
 
+    console.log('Total book data objects:', bookData.length);
+
     for (const object of bookData) {
-        for (let i = 0; i < object.books.length; i++) {
-            const book = new Book(object.books[i].id, delNonStdChars(object.books[i].name), object.books[i].slug);
-            book.root = await getBookDetail(page, book);
-            book.user_url = object.books[i].user.login
-            books.push(book);
+        if (object.books && object.books.length > 0) {
+            console.log(`Processing ${object.books.length} books from object`);
+            for (let i = 0; i < object.books.length; i++) {
+                const book = new Book(object.books[i].id, delNonStdChars(object.books[i].name), object.books[i].slug);
+                book.root = await getBookDetail(page, book);
+                book.user_url = object.books[i].user.login
+                books.push(book);
+            }
+        } else {
+            console.log('Object has no books or empty books array');
         }
     }
 
