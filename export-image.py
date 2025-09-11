@@ -107,24 +107,54 @@ for root, dirs, files in os.walk(markdown_folder):
                 parsed_url = urlparse(img_link)
                 if not parsed_url.scheme:
                     continue
-                    
-                img_filename = re.search(r'/([^/]+\.(png|jpg|jpeg|gif|svg))$', parsed_url.path)
-                if img_filename:
-                    img_filename = img_filename.group(1)
-                else:
+                
+                # 支持更多图片格式和特殊路径
+                img_filename = None
+                years = str(datetime.datetime.now().year)
+                
+                # 1. 标准图片格式匹配
+                standard_match = re.search(r'/([^/]+\.(png|jpg|jpeg|gif|svg|webp|bmp|tiff|ico))$', parsed_url.path)
+                if standard_match:
+                    img_filename = standard_match.group(1)
+                    path_parts = parsed_url.path.split('/')
+                    if len(path_parts) > 3 and re.match(r'^2\d{3}$', path_parts[3]):
+                        years = path_parts[3]
+                
+                # 2. LaTeX公式 (yuque/__latex/xxx.svg)
+                elif re.match(r'/yuque/__latex/([^/]+\.svg)$', parsed_url.path):
+                    latex_match = re.search(r'/yuque/__latex/([^/]+\.svg)$', parsed_url.path)
+                    img_filename = latex_match.group(1) if latex_match else None
+                    years = "latex"
+                
+                # 3. 流程图 (yuque/__flowchart/xxx.svg)
+                elif re.match(r'/yuque/__flowchart/([^/]+\.svg)$', parsed_url.path):
+                    flowchart_match = re.search(r'/yuque/__flowchart/([^/]+\.svg)$', parsed_url.path)
+                    img_filename = flowchart_match.group(1) if flowchart_match else None
+                    years = "flowchart"
+                
+                # 4. PlantUML图 (__puml/xxx.svg)
+                elif re.match(r'.+/__puml/([^/]+\.svg)$', parsed_url.path):
+                    puml_match = re.search(r'/__puml/([^/]+\.svg)$', parsed_url.path)
+                    img_filename = puml_match.group(1) if puml_match else None
+                    years = "puml"
+                
+                # 5. 其他特殊路径的图片 (skylark/lark等)
+                elif re.search(r'/([^/]+\.(png|jpg|jpeg|gif|svg|webp|bmp|tiff))$', parsed_url.path):
+                    special_match = re.search(r'/([^/]+\.(png|jpg|jpeg|gif|svg|webp|bmp|tiff))$', parsed_url.path)
+                    img_filename = special_match.group(1) if special_match else None
+                    # 尝试从路径中提取年份
+                    path_parts = parsed_url.path.split('/')
+                    for part in path_parts:
+                        if re.match(r'^2\d{3}$', part):
+                            years = part
+                            break
+                    else:
+                        years = "other"
+                
+                # 如果没有匹配到文件名，跳过这个图片
+                if not img_filename:
+                    safe_print(f"[SKIP] 无法识别图片格式: {parsed_url.path}")
                     continue
-
-                path_parts = parsed_url.path.split('/')
-                LATEX_PATTERN = r'/yuque/__latex/([^/]+\.svg)$'
-                if re.match(LATEX_PATTERN, parsed_url.path):
-                    years = str(datetime.datetime.now().year)
-                elif len(path_parts) > 3:
-                    years = path_parts[3]
-                    if not re.match(r'^2\d{3}$', years):
-                        safe_print(f"[Warning]: The markdown {file} file's image URL {parsed_url.path} format in markdown does not match the Yuque URL that we expect. There may be a problem with the parsing and the image won't be downloaded. Please pay attention.")
-                        continue
-                else:
-                    years = str(datetime.datetime.now().year)
 
                 if download_image:
                     download_folder = os.path.join(image_folder, years)
