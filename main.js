@@ -37,7 +37,8 @@ async function run() {
     }
 
     // const page = await BrowserPage.getInstance();
-    const browser = await puppeteer.launch({ headless: true }); // true:not show browser
+    const browser = await puppeteer.launch({args: ['--no-sandbox', '--disable-setuid-sandbox'],executablePath: '/root/.cache/puppeteer/chrome/linux-1108766/chrome-linux/chrome', headless: true }); // true:not show browser
+
     const page = await browser.newPage();
 
     // 检查是否存在 cookie 文件
@@ -49,7 +50,9 @@ async function run() {
     const books = await getAllBooks(page)
     // console.log(books)
 
-    console.log("Start export all books ...")
+    console.log("\n🚀 Starting export process...")
+    console.log(`📊 Found ${books.length} books to process`)
+    console.log("=".repeat(50))
     await exportMarkDownFiles(page, books)
 
     browser.close()
