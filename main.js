@@ -1,5 +1,4 @@
 import puppeteer from 'puppeteer';
-import { exit } from 'process';
 import fs from 'fs';
 import path from 'path';
 import { autoLogin } from './src/login.js';
@@ -24,7 +23,86 @@ let color = {
     white: (mess) => color.byNum(mess, 37)
 };
 
+function getBrowserCandidates() {
+    return [
+        process.env.PUPPETEER_EXECUTABLE_PATH,
+        process.env.CHROME_PATH,
+        process.env.EDGE_PATH,
+        'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+        'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+        'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+        'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+        '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+        '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
+        '/usr/bin/google-chrome',
+        '/usr/bin/google-chrome-stable',
+        '/usr/bin/chromium',
+        '/usr/bin/chromium-browser',
+        '/snap/bin/chromium'
+    ].filter(Boolean);
+}
 
+function resolveExecutablePath() {
+    for (const executablePath of getBrowserCandidates()) {
+        if (fs.existsSync(executablePath)) {
+            return executablePath;
+        }
+    }
+
+    return null;
+}
+
+function getLaunchOptions() {
+    const executablePath = resolveExecutablePath();
+    const headless = process.env.HEADLESS === 'false' ? false : 'new';
+    const launchOptions = {
+        headless,
+        ignoreDefaultArgs: ['--enable-automation'],
+        args: [
+            '--disable-blink-features=AutomationControlled'
+        ]
+    };
+
+    if (executablePath) {
+        launchOptions.executablePath = executablePath;
+        console.log(`Use browser executable: ${executablePath}`);
+    } else {
+        console.log(color.yellow('No local Chromium-based browser was detected. Puppeteer will try to use its bundled Chromium if it is installed.'));
+    }
+
+    console.log(`Use headless mode: ${headless}`);
+
+    return launchOptions;
+}
+
+async function preparePage(page) {
+    await page.evaluateOnNewDocument(() => {
+        Object.defineProperty(navigator, 'webdriver', {
+            get: () => undefined
+        });
+
+        Object.defineProperty(navigator, 'languages', {
+            get: () => ['zh-CN', 'zh', 'en']
+        });
+
+        Object.defineProperty(navigator, 'plugins', {
+            get: () => [1, 2, 3, 4, 5]
+        });
+
+        window.chrome = window.chrome || {
+            runtime: {}
+        };
+
+        const originalQuery = window.navigator.permissions?.query;
+        if (originalQuery) {
+            window.navigator.permissions.query = (parameters) => (
+                parameters.name === 'notifications'
+                    ? Promise.resolve({ state: Notification.permission })
+                    : originalQuery(parameters)
+            );
+        }
+    });
+}
 
 async function run() {
     if (!process.env.EXPORT_PATH) {
@@ -37,8 +115,9 @@ async function run() {
     }
 
     // const page = await BrowserPage.getInstance();
-    const browser = await puppeteer.launch({ headless: true }); // true:not show browser
+    const browser = await puppeteer.launch(getLaunchOptions());
     const page = await browser.newPage();
+    await preparePage(page);
 
     // 检查是否存在 cookie 文件
     await autoLogin(page)
@@ -52,7 +131,7 @@ async function run() {
     console.log("Start export all books ...")
     await exportMarkDownFiles(page, books)
 
-    browser.close()
+    await browser.close()
 };
 
 

@@ -67,6 +67,10 @@ yarn
 | USER | 必须(有cookie文件时非必须) | 登录的用户名 |
 | PASSWORD | 必须(有cookie文件时非必须) | 登录的密码 |
 | EXPORT_PATH | 非必须 | 指定导出路径，默认为当前工作目录下的 output 目录(自动创建) |
+| HEADLESS | 非必须 | 默认为 `new`；设置为 `false` 时会显示浏览器，便于人工完成验证码 |
+| PUPPETEER_EXECUTABLE_PATH | 非必须 | 手动指定 Chromium 内核浏览器路径，优先级最高 |
+| CHROME_PATH | 非必须 | 兼容 Chrome 路径变量 |
+| EDGE_PATH | 非必须 | 兼容 Edge 路径变量 |
 
 
 - **ubuntu**
@@ -91,6 +95,9 @@ node main.js
 # 2. powershell
 # $env:USER="xxx";$env:PASSWORD="xxx"; node .\main.js
 $env:USER="xxx";$env:PASSWORD="xxx";$env:EXPORT_PATH="/path/to/exporter"; node .\main.js
+
+# 遇到验证码自动处理失败时，打开浏览器手动完成
+$env:HEADLESS="false";$env:USER="xxx";$env:PASSWORD="xxx"; node .\main.js
 ```
 
 - **MacOS**
@@ -146,18 +153,20 @@ $env:DOWNLOAD_IMAGE="false";$env:UPDATE_MDIMG_URL="true"; $env:REPLACE_IMAGE_HOS
 
 ### Q&A
 1.  Could not find Chromium 但是有 chorm 浏览器
-在不同的操作系统上，Puppeteer 默认调用的 Chrome 路径如下：
--   Windows: C:\Program Files (x86)\Google\Chrome\Application\chrome.exe
--   macOS: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
--   Linux: /usr/bin/google-chrome
-如果主机上对应的可执行文件路径与默认一致但仍然运行失败，可以修改源码手动指定一下，如果没有chorme也可以执行edge的二进制文件
+现在工具会优先自动探测本机已有的 Chrome / Edge / Chromium，可直接运行。
+如果你的浏览器安装在非标准位置，可以通过环境变量手动指定路径：
 ![image.png](https://images.cherryfloris.eu.org/ryken/2023/05/eb093fe57cb0b6cc557a9616f5899445.png)
-```js
-const browser = await puppeteer.launch({ headless: true });
- to
-const browser = await puppeteer.launch({ headless: true, executablePath: '/usr/bin/google-chrome' });
- or
-// headless: false 会打开浏览器实时观察模拟的操作，可用于调试；executablePath 替换为自己本机对应路径
-const browser = await puppeteer.launch({ headless: false, executablePath: "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe" });
+```powershell
+# powershell
+$env:PUPPETEER_EXECUTABLE_PATH="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
+node .\main.js
 ```
+
+程序默认按以下顺序查找浏览器：
+- `PUPPETEER_EXECUTABLE_PATH`
+- `CHROME_PATH`
+- `EDGE_PATH`
+- Windows / macOS / Linux 的常见 Chrome、Edge、Chromium 安装路径
+
+如果上面都找不到，则会回退到 Puppeteer 自带的 Chromium；这时需要重新执行 `npm install` 让 Puppeteer 下载对应版本的浏览器。
 
