@@ -4,6 +4,7 @@ import path from 'path';
 import { autoLogin } from './src/login.js';
 import { getAllBooks } from './src/toc.js';
 import { exportMarkDownFiles } from './src/export.js';
+import { verifyExportedFiles } from './src/verify.js';
 // import { printDirectoryTree } from './src/toc.js';
 
 
@@ -105,6 +106,8 @@ async function preparePage(page) {
 }
 
 async function run() {
+    const verifyOnly = process.env.VERIFY_ONLY === 'true';
+
     if (!process.env.EXPORT_PATH) {
         const outputDir = path.join(process.cwd(), 'output');
         if (!fs.existsSync(outputDir)) {
@@ -129,7 +132,19 @@ async function run() {
     // console.log(books)
 
     console.log("Start export all books ...")
-    await exportMarkDownFiles(page, books)
+    if (verifyOnly) {
+        console.log('VERIFY_ONLY=true, skip export and verify local markdown files only.');
+    } else {
+        await exportMarkDownFiles(page, books)
+    }
+
+    console.log('Start verifying exported markdown files ...');
+    const verification = verifyExportedFiles(process.env.EXPORT_PATH, books);
+    if (verification.missingFiles.length > 0) {
+        console.log(color.yellow(`Missing markdown files count: ${verification.missingFiles.length}`));
+    } else {
+        console.log(color.green('All markdown files are present.'));
+    }
 
     await browser.close()
 };
