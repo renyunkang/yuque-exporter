@@ -1,5 +1,10 @@
 # 语雀 Markdown 导出工具
 
+[![Node.js](https://img.shields.io/badge/Node.js-18%2B-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org/)
+[![Python](https://img.shields.io/badge/Python-3.x-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Puppeteer](https://img.shields.io/badge/Puppeteer-browser_export-40B5A4?logo=puppeteer&logoColor=white)](https://pptr.dev/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
+
 一个基于 Puppeteer 的语雀导出脚本。
 
 它的目标很直接：用浏览器模拟人工操作，把语雀知识库里的文档一篇一篇导出成 Markdown，并尽量保留原有目录结构。仓库里还附带了一个 Python 脚本，用来下载文档中的图片并改写 Markdown 里的图片链接。
@@ -9,6 +14,21 @@
 - 想把个人语雀知识库迁移到 Obsidian、Typora、Git 仓库或本地目录
 - 没有超级会员 / Token，不方便使用官方批量导出 API
 - 已经导出过一轮，想快速检查有没有漏掉 `.md` 文件
+
+## 目录
+
+- [功能概览](#功能概览)
+- [工作原理](#工作原理)
+- [环境要求](#环境要求)
+- [快速开始](#快速开始)
+- [典型输出示例](#典型输出示例)
+- [常用环境变量](#常用环境变量)
+- [常见使用方式](#常见使用方式)
+- [输出目录说明](#输出目录说明)
+- [常见问题](#常见问题)
+- [已知限制](#已知限制)
+- [安全建议](#安全建议)
+- [手工验证建议](#手工验证建议)
 
 ## 功能概览
 
@@ -127,6 +147,56 @@ Actual markdown files: 126
 Verification failed: 2 markdown files are missing.
 MISSING: 我的知识库/专题A/文档1.md
 MISSING: 我的知识库/专题B/文档2.md
+```
+
+## 典型输出示例
+
+### 1. 正常导出时
+
+```text
+Use browser executable: C:\Program Files\Google\Chrome\Application\chrome.exe
+Use headless mode: new
+Login successfully!
+
+Get book stacks ...
+Books count is: 3
+Start export all books ...
+Downloading document 我的知识库/项目说明
+Download document 我的知识库/项目说明 finished
+
+Start verifying exported markdown files ...
+Expected markdown files: 42
+Actual markdown files: 42
+Verification passed: no markdown files are missing.
+All markdown files are present.
+```
+
+### 2. 只做漏文件校验时
+
+```text
+Login successfully!
+
+Get book stacks ...
+Books count is: 3
+Start export all books ...
+VERIFY_ONLY=true, skip export and verify local markdown files only.
+Start verifying exported markdown files ...
+Expected markdown files: 42
+Actual markdown files: 40
+Verification failed: 2 markdown files are missing.
+MISSING: 我的知识库/专题A/文档1.md
+MISSING: 我的知识库/专题B/文档2.md
+Missing markdown files count: 2
+```
+
+### 3. 图片后处理时
+
+```text
+markdown dir is: .\output
+download image: true
+update markdown image url: false
+handle markdown file: .\output\我的知识库\项目说明.md
+download image success: 2026/example-image.png
 ```
 
 ## 常用环境变量
