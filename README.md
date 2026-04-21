@@ -1,163 +1,351 @@
+# 语雀 Markdown 导出工具
 
-# 语雀导出文档工具
-### 功能：
+[![Node.js](https://img.shields.io/badge/Node.js-18%2B-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org/)
+[![Python](https://img.shields.io/badge/Python-3.x-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Puppeteer](https://img.shields.io/badge/Puppeteer-browser_export-40B5A4?logo=puppeteer&logoColor=white)](https://pptr.dev/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 
-- 模拟用户浏览器操作一篇一篇导出 markdown 文档
-- 按照知识库目录导出文档
-- 支持导出失败重试
-- 导出文档中的图片到本地
-- 替换文档中的图片链接
+一个基于 Puppeteer 的语雀导出脚本。
 
-> ps: 后面两个功能是使用 python 实现，可以单独使用
+它的目标很直接：用浏览器模拟人工操作，把语雀知识库里的文档一篇一篇导出成 Markdown，并尽量保留原有目录结构。仓库里还附带了一个 Python 脚本，用来下载文档中的图片并改写 Markdown 里的图片链接。
 
-效果展示：
+适合这几类场景：
 
-![image.png](https://images.cherryfloris.eu.org/ryken/2023/05/91804cc3646d6356cd7458c9a12444fc.png)
+- 想把个人语雀知识库迁移到 Obsidian、Typora、Git 仓库或本地目录
+- 没有超级会员 / Token，不方便使用官方批量导出 API
+- 已经导出过一轮，想快速检查有没有漏掉 `.md` 文件
 
-![image.png](https://images.cherryfloris.eu.org/ryken/2023/05/4b3a4e4207ead71f15600806c12a5c1d.png)
+## 目录
 
-动图展示(旧版图，新版未更新图)：![image.png](./images/exporter.gif)
+- [功能概览](#功能概览)
+- [工作原理](#工作原理)
+- [环境要求](#环境要求)
+- [快速开始](#快速开始)
+- [典型输出示例](#典型输出示例)
+- [常用环境变量](#常用环境变量)
+- [常见使用方式](#常见使用方式)
+- [输出目录说明](#输出目录说明)
+- [常见问题](#常见问题)
+- [已知限制](#已知限制)
+- [安全建议](#安全建议)
+- [手工验证建议](#手工验证建议)
 
-### 说明：
+## 功能概览
 
-这是一个基于puppeteer 来模拟用户在浏览器的操作一篇一篇的导出语雀文档的工具。
-关于语雀的导出可以详情说明见官方的文档：[如何导入导出知识库](https://www.yuque.com/yuque/thyzgp/import-lake-to-lark) 
+- 按知识库目录结构导出 Markdown
+- 支持导出失败自动重试
+- 支持复用登录 Cookie，减少重复登录
+- 支持快速校验本地是否漏掉文档
+- 支持下载文档图片到本地
+- 支持把 Markdown 中的图片链接改成相对路径或自定义图床地址
 
-首先语雀支持导出文档为 markdown 格式。
-- 单篇导出：支持导出为 markdown、word、pdf、lakebook等
-- 批量导出：支持导出为 lakebook、pdf 格式。对于超级用户是可以通过创建 token 来使用[官方的 exporter 工具](https://github.com/yuque/yuque-exporter)或者其他基于 api 的工具进行批量导出；超级用户的价格为 299/年。
+效果示意：
 
-lakebook 格式为语雀私有的格式：[lakebook 格式说明](https://www.yuque.com/yuque/developer/lt69uo)，语雀也没有相应的工具去支持迁移/导入到其他笔记软件。pdf 估计也不能直接导入其他笔记软件(这个没有研究过就不展开了)。
+![导出效果 1](https://images.cherryfloris.eu.org/ryken/2023/05/91804cc3646d6356cd7458c9a12444fc.png)
 
-因此对于想要迁移自己文档的普通用户以及会员用户来说，你只能一篇一篇导出来完成你的迁移动作，这些用户也大多有上百篇文档，这无疑是劝退。所以我的迁移计划也一再搁置，同时也再等待其他的更友好的导出方式出现。最后还是不想等了，请教 GPT 写了这个工具，确实也怕像我这种白嫖用户之后的迁移的成本越来越大了。
+![导出效果 2](https://images.cherryfloris.eu.org/ryken/2023/05/4b3a4e4207ead71f15600806c12a5c1d.png)
 
-> ps: 本人也不是专门写 nodejs 的，代码可能也是烂成狗屎，请大家不喜勿喷。谢谢！
+动图演示（旧图，当前版本界面细节可能略有差异）：
 
-### 使用：
-> 确保你的环境有 Chromium 浏览器。如 Google Chrome、Microsoft Edge、Opera 和 Brave等，都是基于 Chromium 浏览器构建的。
+![导出演示](./images/exporter.gif)
 
-#### 1. 安装 node 相关的工具
-建议使用 nvm 管理 node，选取下列适合自己的方式安装：
-- github 地址：[nvm-sh/nvm: Node Version Manager](https://github.com/nvm-sh/nvm)
-- gitee 地址：[nvm-cn: 🧊 nvm国内安装工具 (gitee.com)](https://gitee.com/RubyKids/nvm-cn)
+## 工作原理
 
-配置 npm 淘宝源：npm config set registry https://registry.npmmirror.com
+语雀普通用户可以单篇导出 Markdown，但不直接提供适合迁移场景的 Markdown 批量导出。这个项目的做法是：
 
-安装 yarn：npm install -g yarn --registry=https://registry.npmmirror.com
+1. 登录语雀
+2. 拉取你的知识库和目录树
+3. 按目录树遍历每篇文档
+4. 触发语雀网页端的 Markdown 导出
+5. 把文件保存到本地目录
 
-#### 2. 下载代码并导出
-**下载代码并安装依赖**
+校验模式会复用同一份目录树，推导“应该存在的 Markdown 文件列表”，再和本地 `EXPORT_PATH` 里的实际 `.md` 文件做对比，从而快速找出缺失项。
+
+## 环境要求
+
+- Node.js
+- Python 3
+- 本机可用的 Chromium 内核浏览器
+  - Google Chrome
+  - Microsoft Edge
+  - Chromium
+  - 其他 Chromium 系浏览器也可能可用
+
+如果浏览器安装在非标准位置，可以通过环境变量手动指定。
+
+## 快速开始
+
+### 1. 安装依赖
+
 ```bash
 git clone https://github.com/renyunkang/yuque-exporter.git
 cd yuque-exporter
-npm install --registry=https://registry.npm.taobao.org
-# 安装 JSONStream：
-# npm install JSONStream --registry=https://registry.npm.taobao.org
+npm install
+```
 
-# yarn 安装依赖如果下载报错的话，可以依据情况更换源。
+如果你习惯使用 `yarn`，也可以：
+
+```bash
 yarn
 ```
 
-**设置环境变量并使用工具导出**
+### 2. 导出 Markdown
 
-需要用到的环境变量：
+首次运行通常需要提供账号密码。成功登录后，会在本地保存 `cookies.json`，后续可以直接复用 Cookie。
 
-| 环境变量 | 选项 | 描述 |
-|--|--|--|
-| USER | 必须(有cookie文件时非必须) | 登录的用户名 |
-| PASSWORD | 必须(有cookie文件时非必须) | 登录的密码 |
-| EXPORT_PATH | 非必须 | 指定导出路径，默认为当前工作目录下的 output 目录(自动创建) |
+Windows PowerShell：
 
-
-- **ubuntu**
-```bash
-# 第一次运行时，使用 USER + PASSWORD 登录
-# USER=xxx PASSWORD=xxx node main.js
-USER=xxx PASSWORD=xxx EXPORT_PATH=/path/to/exporter node main.js
-
-# 登录一次后会保存 cookie，之后使用cookie登录
-# node main.js
-EXPORT_PATH=/path/to/exporter node main.js
+```powershell
+$env:USER="your_user"
+$env:PASSWORD="your_password"
+$env:EXPORT_PATH=".\output"
+node .\main.js
 ```
 
-- **windows**
+macOS / Linux：
+
 ```bash
-# 1. cmd
-set USER="xxx"
-set PASSWORD="xxx"
-# set EXPORT_PATH=/path/to/exporter
-node main.js
-
-# 2. powershell
-# $env:USER="xxx";$env:PASSWORD="xxx"; node .\main.js
-$env:USER="xxx";$env:PASSWORD="xxx";$env:EXPORT_PATH="/path/to/exporter"; node .\main.js
-```
-
-- **MacOS**
-```bash
-# 密码有特殊字符，建议单引号处理
-export USER='xxx'
-export PASSWORD='xxx'
-
-# 运行
+export USER="your_user"
+export PASSWORD="your_password"
+export EXPORT_PATH="./output"
 node main.js
 ```
 
-#### 3. 导出文档中的图片
+如果你需要人工处理验证码，可以关闭无头模式：
 
-需要用到的几个环境变量：
-
-| 环境变量 | 选项 | 描述 |
-|--|--|--|
-| MARKDOWN_DIR | 非必须 | 指定 mardown 文件夹路径，默认为当前工作目录的 output 目录 |
-| DOWNLOAD_IMAGE | 非必须 | 指定是否导出图片，导出路径为 MARKDOWN_DIR 目录下的 images 目录，默认为 true |
-| UPDATE_MDIMG_URL | 非必须 | 指定是否更新文件中的图片路径，未指定 REPLACE_IMAGE_HOST 时，会更新为图片路径的相对路径。默认为 false |
-| REPLACE_IMAGE_HOST | 非必须 | 更新图片路径时自定义文件 url，格式为：{REPLACE_IMAGE_HOST}/{years}/{img_name}，在使用自定义对象存储时，建议上传图片时的路径符合前面的格式；默认为空 |
-
-**使用工具导出**
-
-```bash
-# 以 windows powershell 为例
-# 下载图片，不更新 mardown 源文件的图片链接
-python.exe .\export-image.py
-
-# 不下载图片，更新文件的图片为相对路径
-$env:DOWNLOAD_IMAGE="false";$env:UPDATE_MDIMG_URL="true"; python.exe .\export-image.py
-
-# 不下载图片，更新文件的图片为自定义对象存储(自定义域名)
-$env:DOWNLOAD_IMAGE="false";$env:UPDATE_MDIMG_URL="true"; $env:REPLACE_IMAGE_HOST="https://images.ryken.cloud/"; python.exe .\export-image.py
+```powershell
+$env:HEADLESS="false"
+$env:USER="your_user"
+$env:PASSWORD="your_password"
+node .\main.js
 ```
 
-> ps: 
-> 1. 当使用 python 运行时，如果没有相关依赖的话，需要手动下载一下; pip install xxx
-> 2. 相关环境变量的是指同上面"下载代码并导出"
-> 3. 根据自己需要，指定不同环境变量的值，来满足不同的需求吧
+### 3. 快速校验有没有漏文件
 
+如果你已经导出过一轮，不想重新下载全部文档，可以启用校验模式。
 
+这个模式会：
 
-### 存在的问题：
-1.自动登录仅支持账号密码登录
+- 登录语雀并读取最新目录树
+- 不重新导出 Markdown
+- 对比本地导出目录里的 `.md` 文件
+- 输出缺失文件数量和缺失路径
 
-2.无法保证兼容性，如果之后官方 api 修改后，可以自己根据 api 修改源码
+Windows PowerShell：
 
-3.无法导出内容为纯表格/思维导出的文档(官方也不支持将其直接导出为 markdown)；因此报错的 timeout，可能为这些类型的文档，请重复确认后手动导出为其他格式。
-
-4.团队的导出未测试
-
-### Q&A
-1.  Could not find Chromium 但是有 chorm 浏览器
-在不同的操作系统上，Puppeteer 默认调用的 Chrome 路径如下：
--   Windows: C:\Program Files (x86)\Google\Chrome\Application\chrome.exe
--   macOS: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
--   Linux: /usr/bin/google-chrome
-如果主机上对应的可执行文件路径与默认一致但仍然运行失败，可以修改源码手动指定一下，如果没有chorme也可以执行edge的二进制文件
-![image.png](https://images.cherryfloris.eu.org/ryken/2023/05/eb093fe57cb0b6cc557a9616f5899445.png)
-```js
-const browser = await puppeteer.launch({ headless: true });
- to
-const browser = await puppeteer.launch({ headless: true, executablePath: '/usr/bin/google-chrome' });
- or
-// headless: false 会打开浏览器实时观察模拟的操作，可用于调试；executablePath 替换为自己本机对应路径
-const browser = await puppeteer.launch({ headless: false, executablePath: "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe" });
+```powershell
+$env:VERIFY_ONLY="true"
+$env:EXPORT_PATH=".\output"
+node .\main.js
 ```
 
+如果输出类似下面的内容，说明本地有漏掉的文件：
+
+```text
+Expected markdown files: 128
+Actual markdown files: 126
+Verification failed: 2 markdown files are missing.
+MISSING: 我的知识库/专题A/文档1.md
+MISSING: 我的知识库/专题B/文档2.md
+```
+
+## 典型输出示例
+
+### 1. 正常导出时
+
+```text
+Use browser executable: C:\Program Files\Google\Chrome\Application\chrome.exe
+Use headless mode: new
+Login successfully!
+
+Get book stacks ...
+Books count is: 3
+Start export all books ...
+Downloading document 我的知识库/项目说明
+Download document 我的知识库/项目说明 finished
+
+Start verifying exported markdown files ...
+Expected markdown files: 42
+Actual markdown files: 42
+Verification passed: no markdown files are missing.
+All markdown files are present.
+```
+
+### 2. 只做漏文件校验时
+
+```text
+Login successfully!
+
+Get book stacks ...
+Books count is: 3
+Start export all books ...
+VERIFY_ONLY=true, skip export and verify local markdown files only.
+Start verifying exported markdown files ...
+Expected markdown files: 42
+Actual markdown files: 40
+Verification failed: 2 markdown files are missing.
+MISSING: 我的知识库/专题A/文档1.md
+MISSING: 我的知识库/专题B/文档2.md
+Missing markdown files count: 2
+```
+
+### 3. 图片后处理时
+
+```text
+markdown dir is: .\output
+download image: true
+update markdown image url: false
+handle markdown file: .\output\我的知识库\项目说明.md
+download image success: 2026/example-image.png
+```
+
+## 常用环境变量
+
+### Node 导出脚本
+
+| 环境变量 | 是否必须 | 说明 |
+| --- | --- | --- |
+| `USER` | 有 Cookie 时非必须 | 语雀登录用户名 |
+| `PASSWORD` | 有 Cookie 时非必须 | 语雀登录密码 |
+| `EXPORT_PATH` | 否 | 导出目录，默认是当前目录下的 `output/` |
+| `HEADLESS` | 否 | 默认为 `new`；设为 `false` 可显示浏览器，方便人工处理验证码 |
+| `VERIFY_ONLY` | 否 | 设为 `true` 时只做缺失文件校验，不重新导出 |
+| `PUPPETEER_EXECUTABLE_PATH` | 否 | 手动指定浏览器路径，优先级最高 |
+| `CHROME_PATH` | 否 | 兼容 Chrome 路径变量 |
+| `EDGE_PATH` | 否 | 兼容 Edge 路径变量 |
+
+### Python 图片脚本
+
+| 环境变量 | 是否必须 | 说明 |
+| --- | --- | --- |
+| `MARKDOWN_DIR` | 否 | Markdown 根目录，默认当前目录下的 `output/` |
+| `DOWNLOAD_IMAGE` | 否 | 是否下载图片，默认 `true` |
+| `UPDATE_MDIMG_URL` | 否 | 是否更新 Markdown 里的图片链接，默认 `false` |
+| `REPLACE_IMAGE_HOST` | 否 | 自定义图片访问前缀，格式通常为 `https://your-host/...` |
+
+## 常见使用方式
+
+### 仅导出文档
+
+```powershell
+$env:USER="your_user"
+$env:PASSWORD="your_password"
+node .\main.js
+```
+
+### 导出文档后，再把图片下载到本地
+
+```powershell
+$env:USER="your_user"
+$env:PASSWORD="your_password"
+node .\main.js
+
+$env:MARKDOWN_DIR=".\output"
+python .\export-image.py
+```
+
+### 不下载图片，只把图片链接改成相对路径
+
+```powershell
+$env:MARKDOWN_DIR=".\output"
+$env:DOWNLOAD_IMAGE="false"
+$env:UPDATE_MDIMG_URL="true"
+python .\export-image.py
+```
+
+### 不下载图片，把图片链接替换成你自己的图床地址
+
+```powershell
+$env:MARKDOWN_DIR=".\output"
+$env:DOWNLOAD_IMAGE="false"
+$env:UPDATE_MDIMG_URL="true"
+$env:REPLACE_IMAGE_HOST="https://images.example.com"
+python .\export-image.py
+```
+
+## 输出目录说明
+
+默认情况下，导出结果会写到当前项目目录下的 `output/`。
+
+目录结构大致如下：
+
+```text
+output/
+  知识库A/
+    一级目录/
+      文档1.md
+      文档2.md
+  知识库B/
+    文档3.md
+```
+
+如果你之后再运行 `export-image.py`，图片通常会保存到对应 Markdown 根目录下的 `images/` 目录里。
+
+## 常见问题
+
+### 1. 本机明明装了 Chrome / Edge，却提示找不到 Chromium
+
+脚本会依次尝试这些位置：
+
+- `PUPPETEER_EXECUTABLE_PATH`
+- `CHROME_PATH`
+- `EDGE_PATH`
+- Windows / macOS / Linux 常见安装路径
+
+如果你的浏览器安装位置比较特殊，可以显式指定：
+
+```powershell
+$env:PUPPETEER_EXECUTABLE_PATH="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
+node .\main.js
+```
+
+如果这些位置都找不到，Puppeteer 会尝试使用自身安装的浏览器版本；这时需要确保依赖安装完整。
+
+### 2. 为什么有些文档导不出来？
+
+目前已知有些语雀内容类型并不适合直接导成 Markdown，例如：
+
+- 纯表格内容
+- 思维导图类内容
+- 语雀网页端本身不支持直接导成 Markdown 的特殊文档
+
+这类情况有时会表现为超时，建议人工检查后改用其他格式导出。
+
+### 3. 校验模式能保证 100% 准确吗？
+
+不能保证 100% 覆盖所有异常情况，但它能很快发现最常见的问题：
+
+- 某篇文档导出失败
+- 某次下载中断
+- 本地目录里缺少部分 `.md`
+
+它的判断依据是“语雀目录树里应有的文档”与“本地已有的 `.md` 文件”。如果语雀接口结构变化，校验逻辑也可能需要跟着调整。
+
+### 4. 团队知识库支持吗？
+
+仓库里提到团队导出场景没有系统测试过。理论上部分场景可用，但如果你的知识库结构、权限模型或链接形式和个人库不同，建议先用一个小范围知识库试跑。
+
+## 已知限制
+
+- 自动登录目前主要面向账号密码登录
+- 依赖语雀当前网页行为和接口结构，后续如果语雀改版，脚本可能需要同步调整
+- 无自动化测试，当前以手工验证为主
+
+## 安全建议
+
+- 不要提交账号密码、Cookie、导出的私有文档
+- 建议通过环境变量传递敏感信息
+- 建议把 `output/`、临时文件和 `cookies.json` 保持在版本控制之外
+
+## 手工验证建议
+
+每次改完代码后，至少做一次下面的验证：
+
+1. 执行 `node main.js`，确认能正常登录并导出
+2. 检查 `output/` 目录结构是否符合语雀目录层级
+3. 执行一次 `VERIFY_ONLY=true` 校验，确认缺失统计正常
+4. 如果你使用图片脚本，再执行一次 `python .\export-image.py`
+
+## 说明
+
+这个项目本质上是在现有产品限制下，给普通用户补一个“能用的 Markdown 迁移通道”。它不追求官方 API 那种稳定性，也不追求复杂平台能力，核心目标只有一个：尽量把你的语雀内容比较完整地带出来。

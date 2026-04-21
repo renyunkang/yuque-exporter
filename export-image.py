@@ -23,6 +23,38 @@ replace_image_host = os.environ.get("REPLACE_IMAGE_HOST", "")
 
 # 初始化正则表达式用于匹配图片标签
 img_tag_pattern = r'!\[.*?\]\((.*?)\)'
+supported_extensions = ("png", "jpg", "jpeg", "gif", "svg", "webp")
+special_path_patterns = (
+    r'/yuque/__latex/([^/]+\.svg)$',
+    r'/yuque/__mermaid_v3/([^/]+\.svg)$',
+    r'/yuque/__puml/([^/]+\.svg)$',
+)
+
+
+def resolve_image_filename(parsed_url):
+    filename_match = re.search(rf'/([^/]+\.({"|".join(supported_extensions)}))$', parsed_url.path)
+    if filename_match:
+        return filename_match.group(1)
+
+    for pattern in special_path_patterns:
+        special_match = re.match(pattern, parsed_url.path)
+        if special_match:
+            return special_match.group(1)
+
+    return None
+
+
+def resolve_year_folder(parsed_url):
+    if any(re.match(pattern, parsed_url.path) for pattern in special_path_patterns):
+        return str(datetime.datetime.now().year)
+
+    path_parts = parsed_url.path.split('/')
+    if len(path_parts) > 3:
+        years = path_parts[3]
+        if re.match(r'^2\d{3}$', years):
+            return years
+
+    return None
 
 # 遍历文件夹中的所有 Markdown 文件
 for root, dirs, files in os.walk(markdown_folder):
@@ -43,23 +75,14 @@ for root, dirs, files in os.walk(markdown_folder):
                 parsed_url = urlparse(img_link)
                 if not parsed_url.scheme:
                     continue
-                img_filename = re.search(r'/([^/]+\.(png|jpg|jpeg|gif|svg))$', parsed_url.path)
-                if img_filename:
-                    img_filename = img_filename.group(1)
-                else:
+                img_filename = resolve_image_filename(parsed_url)
+                if not img_filename:
                     continue
 
-                path_parts = parsed_url.path.split('/')
-                LATEX_PATTERN = r'/yuque/__latex/([^/]+\.svg)$'
-                if re.match(LATEX_PATTERN, parsed_url.path):
-                    years = str(datetime.datetime.now().year)
-                elif len(path_parts) > 3:
-                    years = path_parts[3]
-                    if not re.match(r'^2\d{3}$', years):
-                        print(f"[Warning]: The markdown {file} file's image URL {parsed_url.path} format in markdown does not match the Yuque URL that we expect. There may be a problem with the parsing and the image won't be downloaded. Please pay attention.")                        
-                        continue
-                else:
-                    years = str(datetime.datetime.now().year)
+                years = resolve_year_folder(parsed_url)
+                if not years:
+                    print(f"[Warning]: The markdown {file} file's image URL {parsed_url.path} format in markdown does not match the Yuque URL that we expect. There may be a problem with the parsing and the image won't be downloaded. Please pay attention.")
+                    continue
 
                 if download_image:
                     download_folder = os.path.join(image_folder, years)
@@ -67,12 +90,14 @@ for root, dirs, files in os.walk(markdown_folder):
                         os.mkdir(download_folder)
 
                     img_url = urlunparse(parsed_url._replace(fragment=""))
-                    response = requests.get(img_url)
+                    response = requests.get(img_url, timeout=30)
                     if response.status_code == 200:
                         with open(os.path.join(download_folder, img_filename), "wb") as img_file:
                             img_file.write(response.content)
                             print(f"Downloaded: {img_filename}")
-                
+                    else:
+                        print(f"[Warning]: Failed to download {img_url}, status code: {response.status_code}")
+                 
                 if update_image_url: 
                     if not replace_image_host.strip():
                         relative_path = os.path.relpath(image_folder, root).replace("\\", "/")
